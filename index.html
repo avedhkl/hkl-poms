@@ -2386,6 +2386,7 @@ function postingModal_(sid, name, cell) {
           if (ADM.route === 'file') admRenderFile(); else admRenderPlanner();
         });
       } }, { label: 'Cancel', secondary: true }].concat(has ? [{ label: 'Delete', secondary: true, onClick: function () {
+        stuCloseModal();                       // the confirm should not sit on top of the form
         admDelPosting(sid + '|' + cell.postingId);
       } }] : []));
 }
