@@ -9,7 +9,7 @@
    the runner, and closures are the only safe place to keep them. */
 (function () {
   var API = "https://script.google.com/macros/s/AKfycbxBFPy4Dm-BrSKCKnrmdUbI59iUIn9y_5hMUmYM0-iTHoru4PSloeP3t7T9ojP3csw/exec";
-  var NAMES = ["adminAnnouncements","adminAudit","adminBackup","adminBulkStudents","adminCohortReport","adminDashboard","adminDecideLeave","adminDeleteAnnouncement","adminDeleteHoliday","adminDeleteLeave","adminDeletePosting","adminDeleteRequirement","adminDeleteUser","adminDissertation","adminDuplicates","adminEditLeave","adminExportStudents","adminImportStudents","adminLeave","adminNudge","adminPlanner","adminReminderPreview","adminSaveAnnouncement","adminSaveHoliday","adminSaveMilestoneTemplate","adminSavePosting","adminSaveRequirement","adminSaveSetting","adminSaveStudent","adminSaveUser","adminSetEntitlement","adminSettings","adminStudentFile","adminStudentReport","adminStudents","adminSupervisors","adminTriggerStatus","adminUsers","clientLog","getLoginOptions","getSignedInEmail","loginAdmin","loginStudent","loginSupervisor","logoutSession","mergeSupervisors","stuAddComment","stuAddDocument","stuCancelLeave","stuChecklist","stuCompletePosting","stuDissertation","stuDocuments","stuHome","stuLeave","stuLeaveCalendar","stuLeavePreview","stuLogMeeting","stuMarkNotificationRead","stuMeetings","stuNotifications","stuPostings","stuProfile","stuProposeMilestone","stuRequestAltEmail","stuRequestExtension","stuSaveProfile","stuSubmitLeave","stuSubmitMilestone","supAddMilestone","supAddNote","supApprovals","supBulkDecide","supCohort","supDecide","supExport","supLeaveCalendar","supLogMeeting","supMeetings","supStudent","supVerifyMilestone","whoAmI"];
+  var NAMES = ["adminAnnouncements","adminAudit","adminBackup","adminBulkStudents","adminCohortReport","adminDashboard","adminDecideLeave","adminDeleteAnnouncement","adminDeleteHoliday","adminDeleteLeave","adminDeletePosting","adminDeleteRequirement","adminDeleteUser","adminDissertation","adminDuplicates","adminEditLeave","adminExportStudents","adminImportStudents","adminLeave","adminNudge","adminPlanner","adminReminderPreview","adminSaveAnnouncement","adminSaveHoliday","adminSaveMilestoneTemplate","adminSavePhoto","adminSavePosting","adminSaveRequirement","adminSaveSetting","adminSaveStudent","adminSaveUser","adminSetEntitlement","adminSettings","adminStudentFile","adminStudentPhoto","adminStudentReport","adminStudents","adminSupervisors","adminTriggerStatus","adminUsers","clientLog","getLoginOptions","getSignedInEmail","loginAdmin","loginStudent","loginSupervisor","logoutSession","mergeSupervisors","stuAddComment","stuAddDocument","stuCancelLeave","stuChecklist","stuCompletePosting","stuDissertation","stuDocuments","stuHome","stuLeave","stuLeaveCalendar","stuLeavePreview","stuLogMeeting","stuMarkNotificationRead","stuMeetings","stuNotifications","stuPhoto","stuPostings","stuProfile","stuProposeMilestone","stuRemovePhoto","stuRequestAltEmail","stuRequestExtension","stuSavePhoto","stuSaveProfile","stuSubmitLeave","stuSubmitMilestone","supAddMilestone","supAddNote","supApprovals","supBulkDecide","supCohort","supDecide","supExport","supLeaveCalendar","supLogMeeting","supMeetings","supStudent","supStudentPhoto","supVerifyMilestone","whoAmI"];
   function makeRunner() {
     var ok = null, fail = null;
     var api = {
@@ -62,13 +62,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <!-- Styles.html - the ETD HKL design tokens and shared components. Do not restyle:
-     dark slate #101A22 + amber #E8A33D, Zilla Slab / IBM Plex Sans / IBM Plex Mono. -->
+     dark slate #0A1A2B + amber #2EC4B6, Zilla Slab / IBM Plex Sans / IBM Plex Mono. -->
 <style>
     /* same palette and components as the rest of the ETD HKL tools - do not restyle */
-    :root{--ink:#101A22;--panel:#16222C;--panel-2:#1C2B36;--panel-3:#22323E;--line:#2C3D48;
-          --line-soft:#233240;--paper:#ECEEE9;--paper-dim:#C9D2D3;--muted:#8CA0A8;
-          --accent:#E8A33D;--good:#5FAE82;--good-dim:#1c2e24;--warn:#E8A33D;--warn-dim:#3a2f18;
-          --info:#5B92B8;--info-dim:#1b2833;--danger:#D9634A;--danger-dim:#3a2019;--radius:5px;}
+    :root{--ink:#0A1A2B;--panel:#102A41;--panel-2:#153049;--panel-3:#1B3B58;--line:#24476A;
+          --line-soft:#1B3A55;--paper:#EAF0F6;--paper-dim:#C2CFDC;--muted:#8FA7BD;
+          --accent:#2EC4B6;--accent-ink:#06231F;--good:#4CC08E;--good-dim:#0E2C25;--warn:#E4B45C;--warn-dim:#322A14;
+          --info:#6FA8DC;--info-dim:#14293C;--danger:#E0685C;--danger-dim:#331F1C;--radius:5px;}
     *{box-sizing:border-box;} html,body{margin:0;padding:0;}
     body{background:var(--ink);color:var(--paper);font-family:'IBM Plex Sans',sans-serif;
          font-size:14.5px;line-height:1.5;-webkit-font-smoothing:antialiased;}
@@ -77,6 +77,13 @@
     .wrap{max-width:100%;margin:0;padding:22px clamp(14px, 1.5cm, 46px) 96px;}
     @media (min-width:1100px){ .wrap{padding-left:2cm;padding-right:2cm;} }
     /* a wheel while something is loading, and a thin bar across the top */
+    .who-left{display:flex;align-items:center;gap:14px;}
+    .avatar{width:58px;height:58px;border-radius:50%;overflow:hidden;border:2px solid var(--line);
+      background:var(--panel-3);flex:0 0 auto;}
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+    .avatar.big{width:104px;height:104px;}
+    .facts{font-size:12.5px;color:var(--muted);margin-top:3px;}
+    .photo-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap;}
     #stuBusy{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;
       display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);
       border-radius:999px;padding:9px 16px;font-size:12.5px;color:var(--paper);box-shadow:0 6px 22px rgba(0,0,0,.35);}
@@ -119,14 +126,14 @@
     .tab-btn{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--paper-dim);
              padding:10px;border-radius:var(--radius);cursor:pointer;font-size:13.5px;
              font-weight:600;text-align:center;font-family:inherit;}
-    .tab-btn.on{background:var(--accent);color:#1a1206;border-color:var(--accent);}
+    .tab-btn.on{background:var(--accent);color:#06231F;border-color:var(--accent);}
     label{display:block;font-size:11.5px;color:var(--muted);text-transform:uppercase;
           letter-spacing:.04em;margin:12px 0 5px;}
     label:first-child{margin-top:0;}
     input,select{width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);
                  padding:9px 11px;border-radius:4px;font-family:'IBM Plex Sans',sans-serif;font-size:14px;}
     input:focus,select:focus{outline:none;border-color:var(--accent);}
-    .btn{display:inline-block;background:var(--accent);color:#1a1206;border:none;padding:10px 18px;
+    .btn{display:inline-block;background:var(--accent);color:#06231F;border:none;padding:10px 18px;
          border-radius:4px;font-weight:600;font-size:13.5px;cursor:pointer;margin-top:14px;
          font-family:inherit;}
     .btn:hover{filter:brightness(1.08);}
@@ -180,12 +187,12 @@
   <svg viewBox="0 0 600 40" preserveAspectRatio="none">
     <defs>
       <linearGradient id="phGrad" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="#5B92B8"/>
-        <stop offset="55%" stop-color="#E8A33D"/>
-        <stop offset="100%" stop-color="#D9634A"/>
+        <stop offset="0%" stop-color="#6FA8DC"/>
+        <stop offset="55%" stop-color="#2EC4B6"/>
+        <stop offset="100%" stop-color="#E0685C"/>
       </linearGradient>
     </defs>
-    <path class="ph-track" d="M0 22 H600" fill="none" stroke="#2C3D48" stroke-width="1"/>
+    <path class="ph-track" d="M0 22 H600" fill="none" stroke="#24476A" stroke-width="1"/>
     <path class="ph-line"
           d="M0 22 H110 l10 -10 l9 20 l10 -20 l9 20 l10 -10 H290 l10 -10 l9 20 l10 -20 l9 20 l10 -10 H600"
           fill="none" stroke="url(#phGrad)" stroke-width="2" stroke-linejoin="round"/>
@@ -272,9 +279,13 @@
   <!-- --------------------------------------------------------- dashboards -->
   <div id="appView" class="hidden">
     <div class="who-bar">
-      <div>
-        <div class="name" id="whoName">&nbsp;</div>
-        <div class="role" id="whoRole"></div>
+      <div class="who-left">
+        <div class="avatar" id="whoPhoto" hidden></div>
+        <div>
+          <div class="name" id="whoName">&nbsp;</div>
+          <div class="role" id="whoRole"></div>
+          <div class="facts" id="whoFacts"></div>
+        </div>
       </div>
       <button class="btn secondary small" data-act="signOut">Log out</button>
     </div>
@@ -290,7 +301,7 @@
   .spa-nav button{background:var(--panel-2);border:1px solid var(--line);color:var(--paper-dim);
     padding:8px 13px;border-radius:999px;cursor:pointer;font-size:12.5px;font-weight:600;
     font-family:inherit;white-space:nowrap;}
-  .spa-nav button.on{background:var(--accent);color:#1a1206;border-color:var(--accent);}
+  .spa-nav button.on{background:var(--accent);color:#06231F;border-color:var(--accent);}
   .spa-nav button .n{background:var(--danger);color:#fff;border-radius:999px;font-size:10px;
     padding:1px 6px;margin-left:6px;}
   @media (max-width:640px){
@@ -430,14 +441,14 @@ function stuCloseModal() {
 function ring(pct, label, sub) {
   var p = Math.max(0, Math.min(100, Math.round(pct || 0)));
   var r = 22, c = 2 * Math.PI * r, off = c - (p / 100) * c;
-  var stroke = p >= 80 ? '#5FAE82' : (p >= 40 ? '#E8A33D' : '#D9634A');
+  var stroke = p >= 80 ? '#4CC08E' : (p >= 40 ? '#E4B45C' : '#E0685C');
   return '<div class="ring"><svg width="58" height="58" viewBox="0 0 58 58" role="img" aria-label="' +
     p + ' percent">' +
-    '<circle cx="29" cy="29" r="' + r + '" fill="none" stroke="#22323E" stroke-width="6"></circle>' +
+    '<circle cx="29" cy="29" r="' + r + '" fill="none" stroke="#1B3B58" stroke-width="6"></circle>' +
     '<circle cx="29" cy="29" r="' + r + '" fill="none" stroke="' + stroke + '" stroke-width="6" ' +
     'stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) +
     '" transform="rotate(-90 29 29)"></circle>' +
-    '<text x="29" y="33" text-anchor="middle" fill="#ECEEE9" font-size="14" font-family="IBM Plex Mono, monospace">' +
+    '<text x="29" y="33" text-anchor="middle" fill="#EAF0F6" font-size="14" font-family="IBM Plex Mono, monospace">' +
     p + '%</text></svg><div class="lab">' + esc(label) + '</div><div class="sub">' + esc(sub || '') + '</div></div>';
 }
 
@@ -450,6 +461,48 @@ function dfmt(s) {
 }
 
 /** A readable label for the loading wheel. */
+/** The line under the name: supervisor, programme start, expected finish. */
+function whoLine_(s) {
+  if (!s) return '';
+  var bits = [];
+  if (s.supervisor) bits.push('Supervisor: ' + s.supervisor);
+  if (s.tarikhLaporDiri) bits.push('Started ' + dfmt(s.tarikhLaporDiri));
+  var end = s.expectedGraduation || s.tarikhTamatJabatan;
+  if (end) bits.push('Expected to finish ' + dfmt(end));
+  return bits.join('  \u00b7  ');
+}
+
+/** Paints (or clears) the picture and the facts in the header bar. */
+function setWhoBar_(student, photoDataUrl) {
+  var f = document.getElementById('whoFacts');
+  if (f) f.textContent = whoLine_(student);
+  var a = document.getElementById('whoPhoto');
+  if (!a) return;
+  if (photoDataUrl) { a.innerHTML = '<img alt="" src="' + photoDataUrl + '">'; a.hidden = false; }
+  else { a.innerHTML = ''; a.hidden = true; }
+}
+
+/** Shrink a chosen picture in the browser, so what reaches the sheet stays small. */
+function shrinkPhoto_(file, cb) {
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var img = new Image();
+    img.onload = function () {
+      var max = 320, w = img.width, h = img.height;
+      if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+      else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+      var c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      cb(c.toDataURL('image/jpeg', 0.78));
+    };
+    img.onerror = function () { cb(''); };
+    img.src = e.target.result;
+  };
+  reader.onerror = function () { cb(''); };
+  reader.readAsDataURL(file);
+}
+
 function labelFor_(fn) {
   var L = {
     stuHome: 'Loading your home\u2026', stuPostings: 'Loading your postings\u2026',
@@ -583,6 +636,7 @@ document.addEventListener('click', function (ev) {
   ev.preventDefault();
   var id = a.getAttribute('data-sid') || '';
   var acts = {
+    savePhoto: stuSavePhotoAct, removePhoto: stuRemovePhotoAct,
     postingDone: stuPostingDone, milestoneSubmit: stuMilestoneSubmit, milestoneDate: stuMilestoneDate,
     extension: stuExtension, leaveForm: stuLeaveForm, leavePreview: stuLeavePreview,
     leaveCancel: stuLeaveCancel, meetingForm: stuMeetingForm, docForm: stuDocForm,
@@ -603,6 +657,8 @@ function stuRenderHome() {
   stuRun('stuHome', [TOKEN], function (d) {
     if (!d || d.error || !d.rings || !d.leave) { document.getElementById('v-' + STU.route).innerHTML = card_('Home', esc(reason_(d))); return; }
     STU.data.home = d;
+    setWhoBar_(d.student, null);
+    stuRun('stuPhoto', [TOKEN], function (p) { setWhoBar_(d.student, p && p.dataUrl ? p.dataUrl : null); });
     var att = (d.attention || []).map(function (a) {
       return '<div class="att ' + esc(a.severity) + '"><div>' + esc(a.text) + '</div></div>';
     }).join('') || '<div class="note">Nothing needs your attention right now.</div>';
@@ -1013,15 +1069,63 @@ function stuRenderChecklist() {
 }
 
 /* ------------------------------------------------------------- S2 profile */
+/** The picture the student has chosen but not saved yet. */
+var PENDING_PHOTO = '';
+
+function stuSavePhotoAct() {
+  if (!PENDING_PHOTO) { toast('Choose a picture first.', 'bad'); return; }
+  stuRun('stuSavePhoto', [TOKEN, PENDING_PHOTO], function (r) {
+    if (r && r.error) { toast(r.error, 'bad'); return; }
+    toast('Picture saved.', 'good');
+    setWhoBar_(STU.data.home ? STU.data.home.student : null, PENDING_PHOTO);
+    PENDING_PHOTO = '';
+    stuRenderProfile();
+  });
+}
+
+function stuRemovePhotoAct() {
+  stuRun('stuRemovePhoto', [TOKEN], function (r) {
+    if (r && r.error) { toast(r.error, 'bad'); return; }
+    toast('Picture removed.', 'good');
+    PENDING_PHOTO = '';
+    setWhoBar_(STU.data.home ? STU.data.home.student : null, null);
+    stuRenderProfile();
+  });
+}
+
+document.addEventListener('change', function (ev) {
+  var f = ev.target;
+  if (!f || !f.id || f.id !== 'photoFile' || !f.files || !f.files[0]) return;
+  var file = f.files[0];
+  if (!/^image\//.test(file.type)) { toast('Please choose a picture.', 'bad'); return; }
+  toast('Resizing\u2026');
+  shrinkPhoto_(file, function (dataUrl) {
+    if (!dataUrl) { toast('I could not read that picture.', 'bad'); return; }
+    PENDING_PHOTO = dataUrl;
+    var el = document.getElementById('profPhoto');
+    if (el) el.innerHTML = '<img alt="" src="' + dataUrl + '">';
+    toast('Now press "Save this picture".', 'good');
+  });
+});
+
 function stuRenderProfile() {
   stuRun('stuProfile', [TOKEN], function (p) {
     if (!p || p.error || !p.name) { document.getElementById('v-' + STU.route).innerHTML = card_('Profile', esc(reason_(p))); return; }
     STU.data.profile = p;
+    stuRun('stuPhoto', [TOKEN], function (ph) {
+      var el = document.getElementById('profPhoto');
+      if (el && ph && ph.dataUrl) el.innerHTML = '<img alt="" src="' + ph.dataUrl + '">';
+    });
     var rows = [['Name', p.name], ['MMC number', p.mmc], ['Programme', p.program], ['Year / status', p.tahunSt],
                 ['University', p.universiti], ['Supervisor', p.supervisor], ['Reporting date', dfmt(p.tarikhLaporDiri)],
                 ['Posting ends', dfmt(p.tarikhTamatJabatan)], ['IC number', p.ic]]
       .map(function (r) { return '<div><div class="k">' + esc(r[0]) + '</div><div class="v">' + esc(r[1] || '—') + '</div></div>'; }).join('');
     document.getElementById('v-profile').innerHTML =
+      card_('My picture', '<div class="photo-row"><div class="avatar big" id="profPhoto"></div>' +
+        '<div><input type="file" id="photoFile" accept="image/*">' +
+        '<div class="note">A JPG or PNG. It is shrunk to fit before it is saved, so it stays small.</div></div></div>' +
+        '<div class="row-actions"><button class="btn small secondary" data-sact="savePhoto">Save this picture</button>' +
+        '<button class="btn small secondary" data-sact="removePhoto">Remove it</button></div>') +
       card_('My record', '<div class="k-v">' + rows + '</div><div class="note">IC number and address are visible to you and the admin only.</div>') +
       card_('Contact details', '<div class="k-v"><div><div class="k">Phone</div><div class="v">' + esc(p.phone || '—') + '</div></div>' +
         '<div><div class="k">Email for sign-in</div><div class="v">' + esc(p.email || '—') + '</div></div>' +
@@ -1126,7 +1230,7 @@ function stuReadNotif(id) {
   .toolbar select{max-width:200px;}
   .chip{border:1px solid var(--line);background:var(--panel-2);color:var(--paper-dim);border-radius:999px;
     padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;}
-  .chip.on{background:var(--accent);color:#1a1206;border-color:var(--accent);font-weight:600;}
+  .chip.on{background:var(--accent);color:#06231F;border-color:var(--accent);font-weight:600;}
   .note-private{border-left:3px solid var(--info);}
 </style>
 
@@ -1379,7 +1483,14 @@ function supRenderStudent() {
       return;
     }
     var s = d.student, r = d.rings;
+    setWhoBar_(null, null);                       // their own header, not this student's
+    supRun('supStudentPhoto', [TOKEN, SUPP.studentId], function (ph) {
+      var el = document.getElementById('supStuPhoto');
+      if (el && ph && ph.dataUrl) el.innerHTML = '<img alt="" src="' + ph.dataUrl + '">';
+    });
     var head = '<button class="chip" data-vact="openStudent" data-vid="">← all students</button>' +
+      '<div class="photo-row" style="margin-top:12px"><div class="avatar big" id="supStuPhoto"></div>' +
+      '<div><div class="facts" style="font-size:13px">' + esc(whoLine_(s)) + '</div></div></div>' +
       '<div class="k-v" style="margin-top:12px">' +
       [['Name', s.name], ['MMC', s.mmc], ['Programme', s.program], ['Year / status', s.tahunSt],
        ['University', s.universiti], ['Status', s.status], ['Posting now', s.jab], ['Period', s.tempoh]]
@@ -1817,6 +1928,7 @@ document.addEventListener('click', function (ev) {
     template: admTemplateForm, applyTemplate: admApplyTemplate,
     merge: admMerge, nudge: admNudge, user: admUserForm, delUser: admDelUser,
     setting: admSettingForm, announcement: admAnnouncementForm, delAnnouncement: admDelAnnouncement,
+    savePhoto: admSavePhotoAct,
     backup: admBackup, reminders: admReminders, trigger: admTrigger,
     reportCohort: admReportCohort, reportStudent: admReportStudent, filterClear: admFilterClear,
     editPlanner: admPlannerEdit
@@ -2078,6 +2190,32 @@ function admImportCsv() {
       } }, { label: 'Cancel', secondary: true }]);
 }
 
+/** An admin replacing a student's picture (the student can do it themselves too). */
+var ADM_PENDING_PHOTO = '';
+function admSavePhotoAct(studentId) {
+  if (!ADM_PENDING_PHOTO) { toast('Choose a picture first.', 'bad'); return; }
+  admRun('adminSavePhoto', [TOKEN, studentId, ADM_PENDING_PHOTO], function (r) {
+    if (r && r.error) { toast(r.error, 'bad'); return; }
+    stuCloseModal();
+    toast('Picture saved.', 'good');
+    ADM_PENDING_PHOTO = '';
+    admRenderFile();
+  });
+}
+document.addEventListener('change', function (ev) {
+  var f = ev.target;
+  if (!f || f.id !== 'admPhotoFile' || !f.files || !f.files[0]) return;
+  if (!/^image\//.test(f.files[0].type)) { toast('Please choose a picture.', 'bad'); return; }
+  toast('Resizing\u2026');
+  shrinkPhoto_(f.files[0], function (dataUrl) {
+    if (!dataUrl) { toast('I could not read that picture.', 'bad'); return; }
+    ADM_PENDING_PHOTO = dataUrl;
+    var el = document.getElementById('admStuPhoto');
+    if (el) el.innerHTML = '<img alt="" src="' + dataUrl + '">';
+    toast('Now press "Save this picture".', 'good');
+  });
+});
+
 /* ------------------------------------------------- A2b one student's file */
 function admRenderFile() {
   if (!ADM.studentId) { admGo('students'); return; }
@@ -2087,6 +2225,10 @@ function admRenderFile() {
       return;
     }
     var s = d.student, r = d.rings;
+    admRun('adminStudentPhoto', [TOKEN, s.studentId], function (ph) {
+      var el = document.getElementById('admStuPhoto');
+      if (el && ph && ph.dataUrl) el.innerHTML = '<img alt="" src="' + ph.dataUrl + '">';
+    });
     var facts = [['Name', s.name], ['IC', s.ic], ['MMC', s.mmc], ['Phone', s.phone], ['Email', s.email],
                  ['Address', s.alamat], ['Programme', s.program], ['Year', s.tahunSt],
                  ['University', s.universiti], ['Status', s.status], ['Posting', s.jab],
@@ -2108,6 +2250,12 @@ function admRenderFile() {
     }).join('');
     document.getElementById('av-file').innerHTML =
       card_(s.name, '<button class="chip" data-ago="students">← all students</button>' +
+        '<div class="photo-row" style="margin-top:12px"><div class="avatar big" id="admStuPhoto"></div>' +
+        '<div><div class="facts" style="font-size:13px">' + esc(whoLine_(s)) + '</div>' +
+        '<div class="note" style="margin-top:4px">The student can change this picture themselves; you can replace it below.</div>' +
+        '<input type="file" id="admPhotoFile" accept="image/*"><div class="row-actions">' +
+        '<button class="btn small secondary" data-aact="savePhoto" data-aid="' + esc(s.studentId) + '">Save this picture</button>' +
+        '</div></div></div>' +
         '<div class="k-v" style="margin-top:12px">' + facts + '</div>' +
         '<div class="row-actions"><button class="btn small secondary" data-aact="reportStudent" data-aid="' +
         esc(s.studentId) + '">Printable summary</button>' +
