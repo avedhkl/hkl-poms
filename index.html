@@ -9,7 +9,7 @@
    the runner, and closures are the only safe place to keep them. */
 (function () {
   var API = "https://script.google.com/macros/s/AKfycbxBFPy4Dm-BrSKCKnrmdUbI59iUIn9y_5hMUmYM0-iTHoru4PSloeP3t7T9ojP3csw/exec";
-  var NAMES = ["adminAnnouncements","adminAudit","adminBackup","adminBulkStudents","adminCohortReport","adminDashboard","adminDecideLeave","adminDeleteAnnouncement","adminDeleteHoliday","adminDeleteLeave","adminDeletePosting","adminDeleteRequirement","adminDeleteUser","adminDissertation","adminDuplicates","adminEditLeave","adminExportStudents","adminImportStudents","adminLeave","adminNudge","adminPlanner","adminReminderPreview","adminSaveAnnouncement","adminSaveHoliday","adminSaveMilestoneTemplate","adminSavePhoto","adminSavePosting","adminSaveRequirement","adminSaveSetting","adminSaveStudent","adminSaveUser","adminSetEntitlement","adminSettings","adminStudentFile","adminStudentPhoto","adminStudentReport","adminStudents","adminSupervisors","adminTriggerStatus","adminUsers","clientLog","getLoginOptions","getSignedInEmail","loginAdmin","loginStudent","loginSupervisor","logoutSession","mergeSupervisors","stuAddComment","stuAddDocument","stuCancelLeave","stuChecklist","stuCompletePosting","stuDissertation","stuDocuments","stuHome","stuLeave","stuLeaveCalendar","stuLeavePreview","stuLogMeeting","stuMarkNotificationRead","stuMeetings","stuNotifications","stuPhoto","stuPostings","stuProfile","stuProposeMilestone","stuRemovePhoto","stuRequestAltEmail","stuRequestExtension","stuSavePhoto","stuSaveProfile","stuSubmitLeave","stuSubmitMilestone","supAddMilestone","supAddNote","supApprovals","supBulkDecide","supCohort","supDecide","supExport","supLeaveCalendar","supLogMeeting","supMeetings","supStudent","supStudentPhoto","supVerifyMilestone","whoAmI"];
+  var NAMES = ["adminAddStudent","adminAnnouncements","adminArchiveStudent","adminAudit","adminBackup","adminBulkStudents","adminCohortReport","adminDashboard","adminDecideLeave","adminDeleteAnnouncement","adminDeleteHoliday","adminDeleteLeave","adminDeletePosting","adminDeleteRequirement","adminDeleteStudentRow","adminDeleteSupervisor","adminDeleteUser","adminDissertation","adminDuplicates","adminEditLeave","adminExportStudents","adminImportStudents","adminLeave","adminLookups","adminMilestone","adminNudge","adminPlanner","adminReminderPreview","adminSaveAnnouncement","adminSaveHoliday","adminSaveMilestoneTemplate","adminSavePhoto","adminSavePosting","adminSaveRequirement","adminSaveSetting","adminSaveStudent","adminSaveSupervisor","adminSaveUser","adminSetEntitlement","adminSettings","adminStudentFile","adminStudentPhoto","adminStudentReport","adminStudents","adminSupervisors","adminTriggerStatus","adminUsers","clientLog","getLoginOptions","getSignedInEmail","loginAdmin","loginStudent","loginSupervisor","logoutSession","mergeSupervisors","stuAddComment","stuAddDocument","stuCancelLeave","stuChecklist","stuCompletePosting","stuDissertation","stuDocuments","stuHome","stuLeave","stuLeaveCalendar","stuLeavePreview","stuLogMeeting","stuMarkNotificationRead","stuMeetings","stuNotifications","stuPhoto","stuPostings","stuProfile","stuProposeMilestone","stuRemovePhoto","stuRequestAltEmail","stuRequestExtension","stuSavePhoto","stuSaveProfile","stuSubmitLeave","stuSubmitMilestone","supAddMilestone","supAddNote","supApprovals","supBulkDecide","supCohort","supDecide","supExport","supLeaveCalendar","supLogMeeting","supMeetings","supStudent","supStudentPhoto","supVerifyMilestone","whoAmI"];
   function makeRunner() {
     var ok = null, fail = null;
     var api = {
@@ -217,6 +217,7 @@
       <div class="eyebrow">Emergency &amp; Trauma Department · Hospital Kuala Lumpur</div>
       <h1>HKL Postgraduate Monitoring System (HKL-PoMS)</h1>
       <div class="sub">Sign in to view your record.</div>
+      <div class="note" id="buildLine" style="margin-top:6px"></div>
     </div>
 
     <div class="card">
@@ -385,8 +386,9 @@
   <div id="v-inbox" class="spa-view hidden"></div>
 </div>
 
-<div class="toasts" id="stuToasts"></div>
-<div id="stuModal"></div>
+
+<!-- the dialog and toast hosts live in Index.html, outside every view, so that a dialog
+     opened from the admin or supervisor portal is not created inside a hidden container -->
 
 <script>
 /* ------------------------------------------------------------------ helpers */
@@ -399,8 +401,7 @@ function stuSkeleton(id) {
 }
 
 function toast(msg, kind) {
-  var box = document.getElementById('stuToasts');
-  if (!box) return;
+  var box = hostAtTop_('stuToasts', 'toasts');
   var d = document.createElement('div');
   d.className = 'toast' + (kind ? ' ' + kind : '');
   d.textContent = msg;
@@ -408,8 +409,23 @@ function toast(msg, kind) {
   setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, kind === 'bad' ? 7000 : 4200);
 }
 
+function hostAtTop_(id, cls) {
+  var el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    if (cls) el.className = cls;
+    document.body.appendChild(el);
+  } else if (el.parentElement !== document.body) {
+    // it was inside a portal view; that view is hidden when another portal is in use,
+    // which silently swallowed every dialog and toast
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
 function modal(title, bodyHtml, buttons) {
-  var host = document.getElementById('stuModal');
+  var host = hostAtTop_('stuModal', '');
   var bg = document.createElement('div');
   bg.className = 'modal-bg';
   var m = document.createElement('div');
@@ -1216,9 +1232,17 @@ function stuReadNotif(id) {
   .tbl tr.clickable{cursor:pointer;}
   .tbl tr.clickable:hover{background:var(--panel-2);}
   .risk{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;}
-  .risk.red{background:var(--danger);}
-  .risk.amber{background:var(--warn);}
-  .risk.green{background:var(--good);}
+  /* Risk deliberately avoids red / amber / green: in this department those are the treatment
+     zones (resus, yellow, green), so a risk flag must not borrow them. */
+  .risk.red{background:#7C3AED;}
+  .risk.amber{background:#4338CA;}
+  .risk.green{background:#64748B;}
+  .riskword{font-size:10px;font-weight:600;letter-spacing:.03em;padding:1px 6px;border-radius:999px;margin-left:4px;white-space:nowrap;}
+  .riskword.red{background:#F3E8FF;color:#6D28D9;}
+  .riskword.amber{background:#E0E7FF;color:#3730A3;}
+  .riskword.green{background:#E9EEF4;color:#475569;}
+  .att.risky{background:#F3E8FF;border-color:#DDD6FE;color:#5B21B6;}
+  .att.watch{background:#E0E7FF;border-color:#C7D2FE;color:#3730A3;}
   .mini{display:flex;gap:4px;align-items:center;}
   .mini .bar{flex:1;margin:0;height:5px;}
   .q-item{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
@@ -1336,7 +1360,7 @@ function supRenderCohort() {
 
     var table = rows.map(function (s) {
       return '<tr class="clickable" data-vact="openStudent" data-vid="' + esc(s.studentId) + '">' +
-        '<td><span class="risk ' + esc(s.risk.level) + '"></span><b>' + esc(s.name) + '</b>' +
+        '<td><span class="risk ' + esc(s.risk.level) + '"></span><span class="riskword ' + esc(s.risk.level) + '">' + esc(riskWord_(s.risk.level)) + '</span><b>' + esc(s.name) + '</b>' +
           '<div class="note" style="margin:2px 0 0">' + esc(s.program || '') + ' · ' + esc(s.tahunSt || '') +
           (s.risk.reasons.length ? ' · ' + esc(s.risk.reasons[0].text) : '') + '</div></td>' +
         '<td>' + esc(s.universiti || '—') + '</td>' +
@@ -1500,7 +1524,7 @@ function supRenderStudent() {
       '</div><div class="note">IC number, address and phone are held by the admin only.</div>';
 
     var risk = d.risk.reasons.length
-      ? d.risk.reasons.map(function (x) { return '<div class="att ' + esc(x.level === 'red' ? 'high' : 'warn') + '"><div>' + esc(x.text) + '</div></div>'; }).join('')
+      ? d.risk.reasons.map(function (x) { return '<div class="att ' + esc(x.level === 'red' ? 'risky' : 'watch') + '"><div>' + esc(x.text) + '</div></div>'; }).join('')
       : '<div class="note">Nothing is out of step.</div>';
 
     var rings = '<div class="rings">' +
@@ -1768,7 +1792,7 @@ function supRenderExport() {
         '<td>' + esc(s.universiti) + '</td><td>' + esc(s.posting || '—') + '</td>' +
         '<td class="mono">' + esc(s.rings.dissertation.weightedPct) + '%</td>' +
         '<td>' + esc(s.rings.postings.done) + '/' + esc(s.rings.postings.total) + '</td>' +
-        '<td><span class="risk ' + esc(s.risk.level) + '"></span>' + esc(s.risk.level) + '</td></tr>';
+        '<td><span class="risk ' + esc(s.risk.level) + '"></span><span class="riskword ' + esc(s.risk.level) + '">' + esc(riskWord_(s.risk.level)) + '</span></td></tr>';
     }).join('');
     document.getElementById('sv-export').innerHTML =
       card_('Export and print', '<div class="note">A CSV opens in Excel; the printable summary is for a department meeting.</div>' +
@@ -1934,9 +1958,25 @@ document.addEventListener('click', function (ev) {
     backup: admBackup, reminders: admReminders, trigger: admTrigger,
     reportCohort: admReportCohort, reportStudent: admReportStudent, filterClear: admFilterClear,
     editPlanner: admPlannerEdit, addPosting: admAddPosting, editPosting: admEditPosting,
-    delPosting: admDelPosting
+    delPosting: admDelPosting,
+    addStudent: admAddStudentForm, changeSup: admChangeSupervisor,
+    archive: function (sid) { admArchiveStudent(sid, false); },
+    restore: function (sid) { admArchiveStudent(sid, true); },
+    supForm: admSupervisorForm, supDel: admDelSupervisor,
+    msVerify: function (k) { admMilestoneAct(k, 'verify'); },
+    msReturn: function (k) { admMilestoneAct(k, 'return'); },
+    msTarget: function (k) { admMilestoneAct(k, 'target'); },
+    msComment: function (k) { admMilestoneAct(k, 'comment'); },
+    delRow: admDeleteRow
   };
-  if (acts[a.getAttribute('data-aact')]) acts[a.getAttribute('data-aact')](id, a);
+  var fn = acts[a.getAttribute('data-aact')];
+  if (!fn) { toast('That button is not wired up in this build.', 'bad'); return; }
+  try {
+    fn(id, a);
+  } catch (ex) {
+    // never let a button look dead: say what went wrong
+    toast('Something went wrong: ' + ((ex && ex.message) || ex), 'bad');
+  }
 });
 
 document.addEventListener('change', function (ev) {
@@ -1945,6 +1985,186 @@ document.addEventListener('change', function (ev) {
   if (a.getAttribute('data-aact') === 'plannerRange') admPlannerRange(a.value);
 });
 
+
+/* ============================== A12 students and supervisors the admin can change */
+function riskWord_(level) {
+  return level === 'red' ? 'needs attention' : (level === 'amber' ? 'watch' : 'on track');
+}
+function sameName_(a, b) { return String(a || '').trim().toUpperCase() === String(b || '').trim().toUpperCase(); }
+function admLookups_(cb) {
+  if (ADM.lookups) { cb(ADM.lookups); return; }
+  admRun('adminLookups', [TOKEN], function (d) {
+    if (!d || d.error) { toast(reason_(d) || 'Could not load the lists.', 'bad'); return; }
+    ADM.lookups = d;
+    cb(d);
+  });
+}
+function supOptions_(sel, blank) {
+  var l = ADM.lookups || { supervisors: [] };
+  return '<option value="">' + (blank || '\u2014 none \u2014') + '</option>' +
+    l.supervisors.map(function (s) {
+      return '<option value="' + esc(s.name) + '"' + (sameName_(s.name, sel) ? ' selected' : '') + '>' +
+        esc(s.name) + (s.students ? ' \u00b7 ' + s.students + ' student(s)' : '') +
+        (s.nsr ? '' : ' \u00b7 no sign-in') + '</option>';
+    }).join('');
+}
+function dataList_(id, items) {
+  return '<datalist id="' + id + '">' + (items || []).map(function (x) {
+    return '<option value="' + esc(x) + '"></option>'; }).join('') + '</datalist>';
+}
+function admAddStudentForm() {
+  admLookups_(function (l) {
+    modal('Add a student',
+      '<label for="asName">Full name</label><input id="asName" type="text">' +
+      '<label for="asEmail">Email \u2014 they sign in with their name and this address</label><input id="asEmail" type="email">' +
+      '<label for="asIc">IC number</label><input id="asIc" type="text" placeholder="900101-14-5566">' +
+      '<label for="asMmc">MMC number</label><input id="asMmc" type="text">' +
+      '<label for="asProg">Programme</label><input id="asProg" type="text" list="asProgs" value="MASTER">' + dataList_('asProgs', l.programs) +
+      '<label for="asYear">Year of study</label><input id="asYear" type="text" list="asYears">' + dataList_('asYears', l.years) +
+      '<label for="asUni">University</label><input id="asUni" type="text" list="asUnis">' + dataList_('asUnis', l.universities) +
+      '<label for="asSup">Supervisor</label><select id="asSup">' + supOptions_('') + '</select>' +
+      '<label for="asStart">Reporting date</label><input id="asStart" type="date">' +
+      '<label for="asEnd">End of posting</label><input id="asEnd" type="date">' +
+      '<label for="asPhone">Phone</label><input id="asPhone" type="text">' +
+      (l.withoutLogin.length ? '<div class="note">' + l.withoutLogin.length +
+        ' supervisor name(s) in the roster still have no sign-in: ' + esc(l.withoutLogin.slice(0, 4).join(', ')) +
+        (l.withoutLogin.length > 4 ? '\u2026' : '') + '</div>' : ''),
+      [{ label: 'Add the student', onClick: function () {
+          admRun('adminAddStudent', [TOKEN, {
+            name: document.getElementById('asName').value, email: document.getElementById('asEmail').value,
+            ic: document.getElementById('asIc').value, mmc: document.getElementById('asMmc').value,
+            program: document.getElementById('asProg').value, tahunSt: document.getElementById('asYear').value,
+            universiti: document.getElementById('asUni').value, supervisor: document.getElementById('asSup').value,
+            tarikhLaporDiri: document.getElementById('asStart').value,
+            tarikhTamatJabatan: document.getElementById('asEnd').value,
+            phone: document.getElementById('asPhone').value }], function (r) {
+            if (r && r.error) { toast(r.error, 'bad'); return; }
+            stuCloseModal(); toast('Added ' + r.name + ' as ' + r.id + '.', 'good');
+            ADM.lookups = null; admRenderStudents();
+          });
+        } }, { label: 'Cancel', secondary: true }]);
+  });
+}
+function admChangeSupervisor(sid) {
+  admLookups_(function (l) {
+    var cur = ((ADM.data.file || {}).student || {}).supervisor ||
+              (((ADM.data.students || {}).students || []).filter(function (x) { return x.studentId === sid; })[0] || {}).supervisor;
+    modal('Assign a supervisor',
+      '<div class="note">The student sees this name on their own page, and that supervisor sees the student in their list.</div>' +
+      '<label for="csSup">Supervisor</label><select id="csSup">' + supOptions_(cur) + '</select>' +
+      '<div class="note">Nobody listed? Add them in Supervisors first \u2014 a supervisor needs a 6-digit NSR to sign in.</div>',
+      [{ label: 'Save', onClick: function () {
+          var name = document.getElementById('csSup').value;
+          var sup = null;
+          (l.supervisors || []).forEach(function (x) { if (sameName_(x.name, name)) sup = x; });
+          admRun('adminSaveStudent', [TOKEN, sid, { 'SUPERVISOR': name, 'SV EMAIL': sup ? (sup.email || '') : '' }], function (r) {
+            if (r && r.error) { toast(r.error, 'bad'); return; }
+            stuCloseModal();
+            toast(name ? 'Supervisor set to ' + name + '.' : 'Supervisor cleared.', 'good');
+            if (ADM.route === 'file') admRenderFile(); else admRenderStudents();
+          });
+        } }, { label: 'Cancel', secondary: true }]);
+  });
+}
+function admArchiveStudent(sid, back) {
+  var nm = ((ADM.data.file || {}).student || {}).name ||
+           (((ADM.data.students || {}).students || []).filter(function (x) { return x.studentId === sid; })[0] || {}).name || sid;
+  modal(back ? 'Put ' + nm + ' back on the list?' : 'Remove ' + nm + ' from the list?',
+    '<div class="note">' + (back ? 'They will appear in the student list again.'
+      : 'Nothing is deleted \u2014 the row, their postings, leave and milestones all stay in the spreadsheet, and you can put them back any time. They will stop appearing in lists.') + '</div>',
+    [{ label: back ? 'Put back' : 'Remove', onClick: function () {
+        admRun('adminArchiveStudent', [TOKEN, sid, !back], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast(back ? 'Back on the list.' : 'Removed from the list.', 'good');
+          ADM.lookups = null;
+          if (ADM.route === 'file') admRenderFile(); else admRenderStudents();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admSupervisorForm(key) {
+  admLookups_(function (l) {
+    var u = null;
+    (l.supervisors || []).forEach(function (x) { if (String(x.rowIndex) === String(key)) u = x; });
+    modal(u ? 'Change ' + u.name : 'Add a supervisor',
+      '<label for="svName">Name (as it appears in the roster)</label><input id="svName" type="text" value="' + esc(u ? u.name : '') + '">' +
+      '<label for="svNsr">NSR number \u2014 6 digits, this is their sign-in</label><input id="svNsr" type="text" inputmode="numeric" maxlength="6" value="' + esc(u ? u.nsr : '') + '">' +
+      '<label for="svEmail">Email</label><input id="svEmail" type="email" value="' + esc(u ? u.email : '') + '">' +
+      (u ? '<div class="note">' + u.students + ' student(s) are assigned to this name. Changing the name moves them with it.</div>' : ''),
+      [{ label: u ? 'Save' : 'Add', onClick: function () {
+          admRun('adminSaveSupervisor', [TOKEN, { was: u ? u.name : '', name: document.getElementById('svName').value,
+            nsr: document.getElementById('svNsr').value, email: document.getElementById('svEmail').value }], function (r) {
+            if (r && r.error) { toast(r.error, 'bad'); return; }
+            stuCloseModal();
+            toast((u ? 'Saved.' : 'Added ' + r.name + '.') + (r.studentsMoved ? ' ' + r.studentsMoved + ' student(s) moved.' : ''), 'good');
+            ADM.lookups = null; admRenderSupervisors();
+          });
+        } }, { label: 'Cancel', secondary: true }].concat(u ? [{ label: 'Remove the sign-in', secondary: true, onClick: function () {
+          stuCloseModal(); admDelSupervisor(u.name);
+        } }] : []));
+  });
+}
+function admDeleteRow(sid) {
+  var nm = ((ADM.data.file || {}).student || {}).name || sid;
+  modal('Delete the row for ' + nm + '?',
+    '<div class="note">This takes the student out of the spreadsheet for good. Only possible when they have no postings, leave, milestones, meetings, documents or comments on record \u2014 otherwise the system will refuse. Restoring is only from a backup.</div>',
+    [{ label: 'Delete the row', onClick: function () {
+        admRun('adminDeleteStudentRow', [TOKEN, sid], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Row deleted.', 'good');
+          ADM.lookups = null; ADM.studentId = null; admGo('students');
+        });
+      } }, { label: 'Keep it', secondary: true }]);
+}
+function admDelSupervisor(label) {
+  modal('Remove the sign-in for ' + label + '?',
+    '<div class="note">They will no longer be able to sign in. Their students stay in the system but you should assign them to someone else.</div>',
+    [{ label: 'Remove', onClick: function () {
+        admRun('adminDeleteSupervisor', [TOKEN, label], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal();
+          toast('Removed.' + (r.studentsLeft ? ' ' + r.studentsLeft + ' student(s) now have no supervisor.' : ''), r.studentsLeft ? 'bad' : 'good');
+          ADM.lookups = null; admRenderSupervisors();
+        });
+      } }, { label: 'Keep it', secondary: true }]);
+}
+/** Dissertation: act on one milestone of the student whose file is open. */
+function admMilestoneAct(key, what) {
+  var parts = String(key).split('|'), mid = parts[1];
+  var row = null;
+  ((ADM.data.file || {}).milestones || []).forEach(function (m) { if (String(m['id']) === String(mid)) row = m; });
+  var name = ((ADM.data.file || {}).student || {}).name || '';
+  var label = row ? row['milestone'] : 'this milestone';
+  function send(decision, note, target) {
+    admRun('adminMilestone', [TOKEN, mid, decision || '', note === undefined ? '' : note, target || ''], function (r) {
+      if (r && r.error) { toast(r.error, 'bad'); return; }
+      stuCloseModal(); toast('Saved \u2014 ' + label + ' is now ' + (r.status || 'updated') + '.', 'good');
+      admRenderFile();
+    });
+  }
+  if (what === 'verify') {
+    modal('Mark "' + label + '" as verified?',
+      '<div class="note">For ' + esc(name) + '. This counts towards their progress.</div>' +
+      '<label for="mzNote">Note</label><input id="mzNote" type="text">',
+      [{ label: 'Verify', onClick: function () { send('approve', document.getElementById('mzNote').value); } },
+       { label: 'Cancel', secondary: true }]);
+  } else if (what === 'return') {
+    modal('Send "' + label + '" back for revision?',
+      '<div class="note">For ' + esc(name) + '. They will see your note.</div>' +
+      '<label for="mzNote">What needs doing</label><input id="mzNote" type="text">',
+      [{ label: 'Send back', onClick: function () { send('return', document.getElementById('mzNote').value); } },
+       { label: 'Cancel', secondary: true }]);
+  } else if (what === 'target') {
+    modal('Target date for "' + label + '"',
+      '<label for="mzDate">Target date</label><input id="mzDate" type="date" value="' + esc(dayOf_(row && row['targetDate'])) + '">',
+      [{ label: 'Save', onClick: function () { send('', '', document.getElementById('mzDate').value); } },
+       { label: 'Cancel', secondary: true }]);
+  } else {
+    modal('Comment on "' + label + '"',
+      '<label for="mzNote">Comment</label><input id="mzNote" type="text" value="' + esc(row ? (row['supervisorNote'] || '') : '') + '">',
+      [{ label: 'Save', onClick: function () { send('', document.getElementById('mzNote').value); } },
+       { label: 'Cancel', secondary: true }]);
+  }
+}
 /* --------------------------------------------------------- A1 dashboard */
 function admRenderDashboard() {
   admRun('adminDashboard', [TOKEN], function (d) {
@@ -1986,7 +2206,7 @@ function admRenderDashboard() {
     }).join('') || '<div class="note">No postings change hands in the next 60 days.</div>';
 
     var atRisk = (d.atRisk || []).map(function (x) {
-      return '<div class="att ' + esc(x.level === 'red' ? 'high' : 'warn') + '"><div><span class="risk ' +
+      return '<div class="att ' + esc(x.level === 'red' ? 'risky' : 'watch') + '"><div><span class="risk ' +
         esc(x.level) + '"></span><b>' + esc(x.name) + '</b> · ' + esc(x.supervisor || 'no supervisor') +
         (x.pending ? ' · ' + esc(x.pending) + ' waiting' : '') +
         (x.reasons || []).map(function (r) { return '<div class="note">' + esc(r.text) + '</div>'; }).join('') +
@@ -2051,7 +2271,8 @@ function admRenderStudents() {
     var body = rows.map(function (s) {
       return '<tr><td><input type="checkbox" class="pickbox" data-pick="' + esc(s.studentId) + '"' +
         (ADM.picked[s.studentId] ? ' checked' : '') + '></td>' +
-        '<td><span class="risk ' + esc(s.risk.level) + '"></span><span class="inline-edit" data-aact="editField" data-aid="' +
+        '<td><span class="risk ' + esc(s.risk.level) + '"></span><span class="riskword ' + esc(s.risk.level) + '">' +
+        esc(riskWord_(s.risk.level)) + '</span><span class="inline-edit" data-aact="editField" data-aid="' +
         esc(s.studentId) + '|NAMA">' + esc(s.name) + '</span>' +
         '<div class="note" style="margin:2px 0 0"><span class="inline-edit" data-aact="editField" data-aid="' +
         esc(s.studentId) + '|SUPERVISOR">' + esc(s.supervisor || 'no supervisor') + '</span>' +
@@ -2081,6 +2302,7 @@ function admRenderStudents() {
         '<button class="btn small secondary" data-aact="bulk" data-aid="archive">Archive</button>' +
         '<button class="btn small secondary" data-aact="bulk" data-aid="restore">Restore</button>' +
         '<button class="btn small secondary" data-aact="exportCsv">Export CSV</button>' +
+        '<button class="btn small" data-aact="addStudent">Add a student</button>' +
         '<button class="btn small secondary" data-aact="importCsv">Import CSV</button>' +
         '<button class="btn small secondary" data-aact="dupes">Find duplicates</button>' +
         '</div>' +
@@ -2246,10 +2468,19 @@ function admRenderFile() {
                  ['Ends', s.tarikhTamatJabatan], ['Admin notes', s.adminNotes]]
       .map(function (p) { return '<div><div class="k">' + esc(p[0]) + '</div><div class="v">' + esc(p[1] || '—') + '</div></div>'; }).join('');
     var ms = (d.milestones || []).map(function (m) {
-      return '<div class="tl-item ' + (String(m['status']) === 'Verified' ? 'ok' : '') + '"><div class="tl-h">' +
-        esc(m['milestone']) + '</div><div class="tl-m">' + esc(m['status']) + ' · target ' +
-        esc(m['targetDate'] || m['proposedTargetDate'] || '—') + '</div></div>';
-    }).join('') || '<div class="note">No milestones.</div>';
+      var mid = esc(s.studentId + '|' + (m['id'] || ''));
+      var verified = String(m['status']) === 'Verified';
+      return '<div class="tl-item ' + (verified ? 'ok' : '') + '"><div class="tl-h">' +
+        esc(m['milestone']) + '</div><div class="tl-m">' + esc(m['status'] || 'Not started') + ' · target ' +
+        esc(dayText_(m['targetDate'] || m['proposedTargetDate'])) +
+        (m['supervisorNote'] ? ' · ' + esc(String(m['supervisorNote']).slice(0, 80)) : '') +
+        '</div><div class="row-actions">' +
+        (verified ? '' : '<button class="btn small secondary" data-aact="msVerify" data-aid="' + mid + '">Mark verified</button>') +
+        '<button class="btn small secondary" data-aact="msReturn" data-aid="' + mid + '">Send back for revision</button>' +
+        '<button class="btn small secondary" data-aact="msTarget" data-aid="' + mid + '">Set a target date</button>' +
+        '<button class="btn small secondary" data-aact="msComment" data-aid="' + mid + '">Comment</button>' +
+        '</div></div>';
+    }).join('') || '<div class="note">No milestones. Apply the template from the Dissertation tab.</div>';
     var lv = (d.leave.list || []).map(function (l) {
       return '<div class="tl-item"><div class="tl-h">' + esc(l['type']) + ' ' + esc(l['startDate']) + ' → ' +
         esc(l['endDate']) + '</div><div class="tl-m">' + esc(l['workingDays'] || l['days']) + ' day(s) · ' + esc(l['status']) + '</div></div>';
@@ -2284,16 +2515,25 @@ function admRenderFile() {
         '<button class="btn small secondary" data-aact="savePhoto" data-aid="' + esc(s.studentId) + '">Save this picture</button>' +
         '</div></div></div>' +
         '<div class="k-v" style="margin-top:12px">' + facts + '</div>' +
-        '<div class="row-actions"><button class="btn small secondary" data-aact="reportStudent" data-aid="' +
+        '<div class="row-actions"><button class="btn small" data-aact="changeSup" data-aid="' + esc(s.studentId) +
+        '">Change supervisor</button>' +
+        '<button class="btn small secondary" data-aact="reportStudent" data-aid="' +
         esc(s.studentId) + '">Printable summary</button>' +
         '<button class="btn small secondary" data-aact="editField" data-aid="' + esc(s.studentId) +
-        '|adminNotes">Add an admin note</button></div>') +
+        '|adminNotes">Add an admin note</button>' +
+        (s.archived
+          ? '<button class="btn small secondary" data-aact="restore" data-aid="' + esc(s.studentId) + '">Put back on the list</button>'
+          : '<button class="btn small secondary" data-aact="archive" data-aid="' + esc(s.studentId) + '">Remove from the list</button>') +
+        (s.archived ? '<button class="btn small secondary" data-aact="delRow" data-aid="' + esc(s.studentId) +
+          '">Delete the row completely</button>' : '') +
+        '</div>' +
+        (s.archived ? '<div class="att warn"><div>This student is removed from the active list — they do not appear in lists or counts. Nothing has been deleted.</div></div>' : '')) +
       card_('Standing', '<div class="rings">' +
         ring(r.dissertation.weightedPct, 'Dissertation', r.dissertation.done + ' of ' + r.dissertation.total) +
         ring(r.postings.pct, 'Postings', r.postings.done + ' of ' + r.postings.total) +
         ring(r.readiness.pct, 'Pass readiness', r.readiness.done + ' of ' + r.readiness.total) +
         ring(r.meetings.pct, 'Meetings', r.meetings.done + ' of ' + r.meetings.total) + '</div>' +
-        (d.risk.reasons || []).map(function (x) { return '<div class="att ' + esc(x.level === 'red' ? 'high' : 'warn') +
+        (d.risk.reasons || []).map(function (x) { return '<div class="att ' + esc(x.level === 'red' ? 'risky' : 'watch') +
           '"><div>' + esc(x.text) + '</div></div>'; }).join('')) +
       '<div class="grid2">' + card_('Milestones', '<div class="tl">' + ms + '</div>') +
         card_('Leave', '<div class="tl">' + lv + '</div>') + '</div>' +
@@ -2383,7 +2623,9 @@ function postingModal_(sid, name, cell) {
   var from = dayOf_((cell && cell.from) || '') || isoToday_();
   var to = dayOf_((cell && cell.to) || '') || isoPlus_(from, 182);
   modal((has ? 'Change' : 'Add') + ' a posting' + (name ? ' for ' + name : ''),
-    '<label for="ppDept">Department / place</label><input id="ppDept" type="text" value="' + esc(cell ? cell.tempat : '') + '">' +
+    '<label for="ppDept">Department / place</label><input id="ppDept" type="text" list="ppPlaces" value="' + esc(cell ? cell.tempat : '') + '">' +
+    dataList_('ppPlaces', (ADM.data.planner && ADM.data.planner.places) || (ADM.lookups && ADM.lookups.places) ||
+      ['HKL', 'UM', 'UKM']) +
     '<label for="ppFrom">Start</label><input id="ppFrom" type="date" value="' + esc(from) + '">' +
     '<label for="ppTo">End</label><input id="ppTo" type="date" value="' + esc(to) + '">' +
     '<label for="ppRound">Round number</label><input id="ppRound" type="number" min="0" value="' + esc(cell && cell.roundNo ? cell.roundNo : 1) + '">' +
@@ -2619,6 +2861,7 @@ function fmtISO_(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).
 
 /* ----------------------------------------------------------- A6 supervisors */
 function admRenderSupervisors() {
+  if (!ADM.lookups) { admLookups_(function () { admRenderSupervisors(); }); }
   admRun('adminSupervisors', [TOKEN], function (d) {
     if (!d || d.error || !d.supervisors) {
       document.getElementById('av-' + ADM.route).innerHTML = card_('Supervisors', esc(reason_(d)));
@@ -2626,13 +2869,17 @@ function admRenderSupervisors() {
     }
     ADM.data.supers = d;
     var rows = d.supervisors.map(function (s) {
-      return '<tr><td><b>' + esc(s.name) + '</b></td><td>' + esc(s.students) + '</td>' +
+      var nsr = '';
+      (ADM.lookups ? ADM.lookups.supervisors : []).forEach(function (x) { if (sameName_(x.name, s.name)) nsr = x.nsr; });
+      return '<tr><td><b>' + esc(s.name) + '</b>' + (nsr ? '<div class="note mono">NSR ' + esc(nsr) + '</div>' : '') + '</td><td>' + esc(s.students) + '</td>' +
         '<td>' + (s.pending ? '<span class="badge warn">' + esc(s.pending) + '</span>' : '0') + '</td>' +
         '<td>' + (s.oldestPending === null ? '—' : esc(s.oldestPending) + 'd') + '</td>' +
-        '<td>' + esc(s.risk.red) + ' red / ' + esc(s.risk.amber) + ' amber</td>' +
+        '<td>' + esc(s.risk.red) + ' needs attention / ' + esc(s.risk.amber) + ' watch</td>' +
         '<td>' + (s.hasLogin ? (s.hasCode ? 'can sign in' : 'no code') : 'no USERS row') + '</td>' +
         '<td>' + (s.email ? '<span class="note">' + esc(s.email) + '</span>' : '<span class="badge warn">no email</span>') + '</td>' +
-        '<td><button class="btn small secondary" data-aact="nudge" data-aid="' + esc(s.name) + '">Nudge</button></td></tr>';
+        '<td><button class="btn small secondary" data-aact="supForm" data-aid="' + esc(s.rowIndex) +
+        '">Change / NSR</button> <button class="btn small secondary" data-aact="nudge" data-aid="' + esc(s.name) +
+        '">Nudge</button></td></tr>';
     }).join('');
     var merges = (d.mergeProposals || []).map(function (p) {
       return '<div class="att warn"><div><b>' + esc(p.shorter) + '</b> (' + esc(p.studentsUnderShorter) +
@@ -2642,7 +2889,9 @@ function admRenderSupervisors() {
         esc(p.shorter) + '">Merge into ' + esc(p.longer) + '</button></div></div></div>';
     }).join('') || '<div class="note">No duplicate supervisor names found.</div>';
     document.getElementById('av-supervisors').innerHTML =
-      card_('Supervisors', '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Supervisor</th><th>Students</th>' +
+      card_('Supervisors', '<div class="toolbar"><button class="btn small" data-aact="supForm">Add a supervisor</button>' +
+        '<span class="note" style="align-self:center">The NSR number is their sign-in. Adding one here also gives them a sign-in.</span></div>' +
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Supervisor</th><th>Students</th>' +
         '<th>Waiting</th><th>Oldest</th><th>Risk</th><th>Sign-in</th><th>Email</th><th></th></tr></thead><tbody>' +
         rows + '</tbody></table></div>') +
       card_('Possible duplicates', merges + '<div class="note">Merging moves every student to the name you keep, then marks the other row inactive.</div>');
@@ -2735,6 +2984,7 @@ function admRenderSettings() {
       return '<tr><td class="mono">' + esc(k) + '</td><td>' + esc(d.settings[k] || '') + '</td>' +
         '<td><button class="btn small secondary" data-aact="setting" data-aid="' + esc(k) + '">Change</button></td></tr>';
     }).join('');
+    var build = (typeof BUILD !== 'undefined') ? BUILD : 'unknown';
     var reqs = (d.requirements || []).map(function (r) {
       return '<div class="att ' + (r.mandatory ? 'warn' : '') + '"><div><b>' + esc(r.name) + '</b>' +
         (r.mandatory ? ' <span class="badge warn">required</span>' : '') +
@@ -2744,7 +2994,7 @@ function admRenderSettings() {
         esc(r.id) + '">Remove</button></div></div></div>';
     }).join('');
     document.getElementById('av-settings').innerHTML =
-      card_('Department settings', '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Setting</th><th>Value</th><th></th>' +
+      card_('Department settings', '<div class="note">Page built ' + esc(build) + ' \u2014 if this number looks old, the page you are on is an old copy; reload it.</div>' + '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Setting</th><th>Value</th><th></th>' +
         '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
         '<div class="note">MAIL_ENABLED is the master switch for every email the system sends. It stays false until you say otherwise.</div>') +
       card_('Pass checklist requirements', reqs + '<div class="row-actions"><button class="btn small secondary" data-aact="requirement">Add a requirement</button></div>') +
@@ -2993,6 +3243,8 @@ function admReportStudent() {
     </div>
 
 <script>
+/* Bump this on every publish, so an old copy of the page is obvious. */
+var BUILD = '30 Sep 2026 04:35';
 var TOKEN = null, OPTIONS = null;
 var NAMES = { stu: [], sup: [] };
 
@@ -3334,6 +3586,11 @@ function loadAdmin() {
 
 /* Shows which Google account the deployment can see (D1). Blank means the deployment
    still allows anyone in without signing in. */
+(function () {
+  var b = document.getElementById('buildLine');
+  if (b && typeof BUILD !== 'undefined') b.textContent = 'Page built ' + BUILD;
+})();
+
 google.script.run
   .withSuccessHandler(function (r) {
     var box = document.getElementById('gmailLine');
@@ -3345,5 +3602,10 @@ google.script.run
   .withFailureHandler(function () {})
   .getSignedInEmail();
 </script>
+<!-- Outside every view on purpose: a dialog opened from any portal must not be built inside a
+     hidden container, or pressing a button appears to do nothing at all. -->
+<div class="toasts" id="stuToasts"></div>
+<div id="stuModal"></div>
+
 </body>
 </html>
