@@ -1,0 +1,3093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+/* Talks to the project's JSON bridge instead of google.script.run, so the interface can live on
+   an ordinary web address. Every call is a plain POST with credentials omitted, which is why
+   Google answers it even for accounts whose Workspace policy refuses Apps Script *pages*.
+   Handlers are held per call chain: the app invokes the function with .apply, so `this` is not
+   the runner, and closures are the only safe place to keep them. */
+(function () {
+  var API = "https://script.google.com/macros/s/AKfycbxBFPy4Dm-BrSKCKnrmdUbI59iUIn9y_5hMUmYM0-iTHoru4PSloeP3t7T9ojP3csw/exec";
+  var NAMES = ["adminAnnouncements","adminAudit","adminBackup","adminBulkStudents","adminCohortReport","adminDashboard","adminDecideLeave","adminDeleteAnnouncement","adminDeleteHoliday","adminDeleteLeave","adminDeletePosting","adminDeleteRequirement","adminDeleteUser","adminDissertation","adminDuplicates","adminEditLeave","adminExportStudents","adminImportStudents","adminLeave","adminNudge","adminPlanner","adminReminderPreview","adminSaveAnnouncement","adminSaveHoliday","adminSaveMilestoneTemplate","adminSavePosting","adminSaveRequirement","adminSaveSetting","adminSaveStudent","adminSaveUser","adminSetEntitlement","adminSettings","adminStudentFile","adminStudentReport","adminStudents","adminSupervisors","adminTriggerStatus","adminUsers","clientLog","getLoginOptions","getSignedInEmail","loginAdmin","loginStudent","loginSupervisor","logoutSession","mergeSupervisors","stuAddComment","stuAddDocument","stuCancelLeave","stuChecklist","stuCompletePosting","stuDissertation","stuDocuments","stuHome","stuLeave","stuLeaveCalendar","stuLeavePreview","stuLogMeeting","stuMarkNotificationRead","stuMeetings","stuNotifications","stuPostings","stuProfile","stuProposeMilestone","stuRequestAltEmail","stuRequestExtension","stuSaveProfile","stuSubmitLeave","stuSubmitMilestone","supAddMilestone","supAddNote","supApprovals","supBulkDecide","supCohort","supDecide","supExport","supLeaveCalendar","supLogMeeting","supMeetings","supStudent","supVerifyMilestone","whoAmI"];
+  function makeRunner() {
+    var ok = null, fail = null;
+    var api = {
+      withSuccessHandler: function (f) { ok = f; return api; },
+      withFailureHandler: function (f) { fail = f; return api; },
+      withUserObject: function () { return api; }
+    };
+    NAMES.forEach(function (name) {
+      api[name] = function () {
+        var args = Array.prototype.slice.call(arguments);
+        var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+        window.__apiLog = window.__apiLog || [];
+        fetch(API, {
+          method: 'POST', credentials: 'omit', cache: 'no-store',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ api: 1, fn: name, args: args })
+        }).then(function (r) {
+          return r.text().then(function (txt) {
+            var j = null;
+            try { j = JSON.parse(txt); } catch (e) {}
+            return { j: j, txt: txt || '' };
+          });
+        }).then(function (res) {
+          var ms = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - t0);
+          window.__apiLog.push({ fn: name, ms: ms, ok: !!(res.j && res.j.ok),
+                                 err: (res.j && res.j.error) || (res.j ? '' : 'not json: ' + res.txt.slice(0, 60)) });
+          if (res.j && res.j.ok) { if (ok) ok(res.j.value); return; }
+          var msg = (res.j && res.j.error) || 'The server did not answer.';
+          if (fail) fail(new Error(msg));
+        }).catch(function (e) {
+          (window.__apiLog = window.__apiLog || []).push({ fn: name, ms: -1, ok: false, err: 'threw: ' + (e && e.message) });
+          if (fail) fail(e);
+        });
+        return api;
+      };
+    });
+    return api;
+  }
+  window.google = window.google || {};
+  google.script = google.script || {};
+  Object.defineProperty(google.script, 'run', { get: makeRunner, configurable: true });
+  google.script.host = { setHeight: function () {}, editor: { focus: function () {} }, close: function () {} };
+  google.script.url = { getLocation: function (cb) {
+    cb({ parameter: {}, hash: (window.location.hash || '').replace('#', '') }); } };
+})();
+</script>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Styles.html - the ETD HKL design tokens and shared components. Do not restyle:
+     dark slate #101A22 + amber #E8A33D, Zilla Slab / IBM Plex Sans / IBM Plex Mono. -->
+<style>
+    /* same palette and components as the rest of the ETD HKL tools - do not restyle */
+    :root{--ink:#101A22;--panel:#16222C;--panel-2:#1C2B36;--panel-3:#22323E;--line:#2C3D48;
+          --line-soft:#233240;--paper:#ECEEE9;--paper-dim:#C9D2D3;--muted:#8CA0A8;
+          --accent:#E8A33D;--good:#5FAE82;--good-dim:#1c2e24;--warn:#E8A33D;--warn-dim:#3a2f18;
+          --info:#5B92B8;--info-dim:#1b2833;--danger:#D9634A;--danger-dim:#3a2019;--radius:5px;}
+    *{box-sizing:border-box;} html,body{margin:0;padding:0;}
+    body{background:var(--ink);color:var(--paper);font-family:'IBM Plex Sans',sans-serif;
+         font-size:14.5px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+    .mono{font-family:'IBM Plex Mono',monospace;}
+    h1,h2,h3{font-family:'Zilla Slab',serif;margin:0;}
+    .wrap{max-width:100%;margin:0;padding:22px clamp(14px, 1.5cm, 46px) 96px;}
+    @media (min-width:1100px){ .wrap{padding-left:2cm;padding-right:2cm;} }
+    /* a wheel while something is loading, and a thin bar across the top */
+    #stuBusy{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;
+      display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);
+      border-radius:999px;padding:9px 16px;font-size:12.5px;color:var(--paper);box-shadow:0 6px 22px rgba(0,0,0,.35);}
+    .spin{width:15px;height:15px;border-radius:50%;border:2px solid var(--panel-3);
+      border-top-color:var(--accent);animation:sp .7s linear infinite;flex:0 0 auto;}
+    @keyframes sp{to{transform:rotate(360deg);}}
+    #stuBar{position:fixed;top:0;left:0;height:3px;width:0;z-index:61;background:var(--accent);
+      transition:width .25s ease;box-shadow:0 0 10px rgba(232,163,61,.7);}
+    #stuBar.on{animation:sweep 1.6s ease-in-out infinite;}
+    @keyframes sweep{0%{width:8%;margin-left:0}50%{width:55%;margin-left:20%}100%{width:8%;margin-left:92%}}
+    .skel{background:linear-gradient(90deg,var(--panel-2),var(--panel-3),var(--panel-2));background-size:200% 100%;
+      animation:shim 1.2s linear infinite;border-radius:4px;height:11px;margin:9px 0;}
+    @keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .header{margin-bottom:26px;}
+    .eyebrow{font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;}
+    .header h1{font-size:26px;font-weight:600;margin:6px 0 4px;}
+    .header .sub{color:var(--muted);font-size:13px;}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+           padding:20px 22px;margin-bottom:18px;width:100%;}
+     /* one wrapper per field, so a wide screen can lay them out side by side */
+     .field{min-width:0;}
+     .field > label{margin-top:0;}
+     @media (min-width:900px) {
+       #formStudent, #formSupervisor{display:grid;grid-template-columns:1fr 1fr;gap:18px 26px;align-items:start;}
+       #formStudent > .btn, #formSupervisor > .btn{grid-column:1 / -1;justify-self:start;margin-top:0;}
+       #formStudent > .note, #formSupervisor > .note{grid-column:1 / -1;}
+     }
+     @media (min-width:1400px) {
+       #formStudent, #formSupervisor{grid-template-columns:1fr 1fr 1fr;}
+       #formAdmin{display:grid;grid-template-columns:1fr 1fr;gap:18px 26px;align-items:start;}
+       #formAdmin > .btn{grid-column:1 / -1;justify-self:start;margin-top:0;}
+     }
+     @media (max-width:560px) {
+       .wrap{padding:14px 14px 80px;}
+       .card{padding:16px 14px;}
+       .profile-grid{grid-template-columns:1fr;}
+     }
+
+    .tabs{display:flex;gap:8px;margin-bottom:18px;}
+    .tab-btn{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--paper-dim);
+             padding:10px;border-radius:var(--radius);cursor:pointer;font-size:13.5px;
+             font-weight:600;text-align:center;font-family:inherit;}
+    .tab-btn.on{background:var(--accent);color:#1a1206;border-color:var(--accent);}
+    label{display:block;font-size:11.5px;color:var(--muted);text-transform:uppercase;
+          letter-spacing:.04em;margin:12px 0 5px;}
+    label:first-child{margin-top:0;}
+    input,select{width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);
+                 padding:9px 11px;border-radius:4px;font-family:'IBM Plex Sans',sans-serif;font-size:14px;}
+    input:focus,select:focus{outline:none;border-color:var(--accent);}
+    .btn{display:inline-block;background:var(--accent);color:#1a1206;border:none;padding:10px 18px;
+         border-radius:4px;font-weight:600;font-size:13.5px;cursor:pointer;margin-top:14px;
+         font-family:inherit;}
+    .btn:hover{filter:brightness(1.08);}
+    .btn.secondary{background:var(--panel-3);color:var(--paper-dim);border:1px solid var(--line);}
+    .btn.small{padding:7px 12px;font-size:12px;margin-top:0;}
+    .err{color:var(--danger);font-size:12.5px;margin-top:8px;}
+    .hidden{display:none !important;}
+    .who-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;
+             flex-wrap:wrap;margin-bottom:18px;}
+    .who-bar .name{font-weight:600;}
+    .who-bar .role{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;}
+    .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:6px;}
+    .pf{font-size:13px;}
+    .pf .k{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+           display:block;margin-bottom:2px;}
+    .pf .v{font-weight:600;color:var(--paper);}
+    table{width:100%;border-collapse:collapse;margin-top:6px;}
+    th{text-align:left;font-size:10.5px;color:var(--muted);text-transform:uppercase;
+       letter-spacing:.04em;border-bottom:1px solid var(--line);padding:8px 8px;}
+    td{border-bottom:1px solid var(--line-soft);padding:10px 8px;font-size:13px;}
+    tr:last-child td{border-bottom:none;}
+    .badge{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.03em;
+           padding:3px 9px;border-radius:999px;text-transform:uppercase;}
+    .badge.good{background:var(--good-dim);color:var(--good);}
+    .badge.info{background:var(--info-dim);color:var(--info);}
+    .badge.warn{background:var(--warn-dim);color:var(--warn);}
+    .badge.muted{background:var(--panel-3);color:var(--paper-dim);}
+    .note{color:var(--muted);font-size:12px;margin-top:14px;}
+    /* name type-ahead */
+    .sugg{position:relative;}
+    .sugg ul{position:absolute;z-index:20;left:0;right:0;top:100%;margin:2px 0 0;padding:0;
+             list-style:none;background:var(--panel-2);border:1px solid var(--line);
+             border-radius:4px;box-shadow:0 10px 24px rgba(0,0,0,.45);max-height:250px;
+             overflow-y:auto;display:none;}
+    .sugg ul.on{display:block;}
+    .sugg li{padding:10px 12px;font-size:14px;cursor:pointer;border-bottom:1px solid var(--line-soft);}
+    .sugg li:last-child{border-bottom:none;}
+    .sugg li:hover,.sugg li.sel{background:var(--panel-3);}
+    .sugg li b{color:var(--accent);}
+    .sugg .none,.sugg .more{color:var(--muted);font-size:12.5px;cursor:default;}
+    .diag{color:var(--muted);font-size:11.5px;margin-top:12px;font-family:'IBM Plex Mono',monospace;}
+  
+</style>
+
+</head>
+<body>
+<div class="wrap">
+<!-- PulseHero.html - the animated strip that tops every ETD HKL screen.
+     Motion is decoration only and stops completely when the reader asks for reduced motion. -->
+<div class="pulse-hero" aria-hidden="true">
+  <svg viewBox="0 0 600 40" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="phGrad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#5B92B8"/>
+        <stop offset="55%" stop-color="#E8A33D"/>
+        <stop offset="100%" stop-color="#D9634A"/>
+      </linearGradient>
+    </defs>
+    <path class="ph-track" d="M0 22 H600" fill="none" stroke="#2C3D48" stroke-width="1"/>
+    <path class="ph-line"
+          d="M0 22 H110 l10 -10 l9 20 l10 -20 l9 20 l10 -10 H290 l10 -10 l9 20 l10 -20 l9 20 l10 -10 H600"
+          fill="none" stroke="url(#phGrad)" stroke-width="2" stroke-linejoin="round"/>
+  </svg>
+</div>
+<style>
+  .pulse-hero{height:34px;margin:-4px 0 14px;overflow:hidden;}
+  .pulse-hero svg{width:100%;height:34px;display:block;}
+  .ph-track{opacity:.8;}
+  .ph-line{stroke-dasharray:90 620;animation:phSweep 7s linear infinite;}
+  @keyframes phSweep{from{stroke-dashoffset:710;}to{stroke-dashoffset:0;}}
+  @media (prefers-reduced-motion: reduce){.ph-line{animation:none;stroke-dasharray:none;opacity:.75;}}
+</style>
+
+
+
+  <!-- ------------------------------------------------------------ sign in -->
+  <div id="loginView">
+    <div class="header">
+      <div class="eyebrow">Emergency &amp; Trauma Department · Hospital Kuala Lumpur</div>
+      <h1>HKL Postgraduate Monitoring System (HKL-PoMS)</h1>
+      <div class="sub">Sign in to view your record.</div>
+    </div>
+
+    <div class="card">
+      <div id="gmailLine" class="note" style="margin-bottom:10px"></div>
+    <div class="tabs">
+        <button class="tab-btn on" id="tStudent" data-act="pick" data-arg="Student">Student</button>
+        <button class="tab-btn" id="tSupervisor" data-act="pick" data-arg="Supervisor">Supervisor</button>
+        <button class="tab-btn" id="tAdmin" data-act="pick" data-arg="Admin">Admin</button>
+      </div>
+
+      <div id="formStudent">
+        <div class="field">
+          <label>Your name</label>
+          <div class="sugg">
+            <input id="stuName" type="text" autocomplete="off" placeholder="Start typing your name"
+                   oninput="suggest('stu')" onfocus="suggest('stu')" onblur="closeSugg('stu')"
+                   onkeydown="enterKey_(event, 'Student')">
+            <ul id="stuList"></ul>
+          </div>
+        </div>
+        <div class="field">
+          <label>Registered email</label>
+          <input id="stuEmail" type="email" placeholder="the email the department holds for you"
+                   onkeydown="enterKey_(event, 'Student')">
+        </div>
+        <button class="btn" id="stuBtn" data-act="doStudent">Sign in</button>
+      </div>
+
+      <div id="formSupervisor" class="hidden">
+        <div class="field">
+          <label>Your name</label>
+          <div class="sugg">
+            <input id="supName" type="text" autocomplete="off" placeholder="Start typing your name"
+                   oninput="suggest('sup')" onfocus="suggest('sup')" onblur="closeSugg('sup')"
+                   onkeydown="enterKey_(event, 'Supervisor')">
+            <ul id="supList"></ul>
+          </div>
+        </div>
+        <div class="field">
+          <label>NSR number</label>
+          <input id="supPin" type="password" placeholder="Your 6-digit NSR number"
+                   onkeydown="enterKey_(event, 'Supervisor')">
+        </div>
+        <div class="note" style="margin-top:6px">Use the NSR number we hold for you. Ask the
+          department admin if you are not sure what it is.</div>
+        <button class="btn" id="supBtn" data-act="doSupervisor">Sign in</button>
+      </div>
+
+      <div id="formAdmin" class="hidden">
+        <div class="field">
+          <label>Admin passcode</label>
+          <input id="admPass" type="password" placeholder="Passcode"
+                   onkeydown="enterKey_(event, 'Admin')">
+        </div>
+        <button class="btn" id="admBtn" data-act="doAdmin">Sign in</button>
+      </div>
+
+      <div class="err hidden" id="loginErr"></div>
+    </div>
+  </div>
+
+  <!-- --------------------------------------------------------- dashboards -->
+  <div id="appView" class="hidden">
+    <div class="who-bar">
+      <div>
+        <div class="name" id="whoName">&nbsp;</div>
+        <div class="role" id="whoRole"></div>
+      </div>
+      <button class="btn secondary small" data-act="signOut">Log out</button>
+    </div>
+    <div class="err hidden" id="appErr"></div>
+
+    <div id="viewStudent" class="hidden">
+      <!-- ============================================================================
+     Student.html - the student portal. Hash-routed, phone-first, no page reloads.
+     Every value that reaches the screen goes through esc(); no inline event handlers.
+     ============================================================================ -->
+<style>
+  .spa-nav{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px;}
+  .spa-nav button{background:var(--panel-2);border:1px solid var(--line);color:var(--paper-dim);
+    padding:8px 13px;border-radius:999px;cursor:pointer;font-size:12.5px;font-weight:600;
+    font-family:inherit;white-space:nowrap;}
+  .spa-nav button.on{background:var(--accent);color:#1a1206;border-color:var(--accent);}
+  .spa-nav button .n{background:var(--danger);color:#fff;border-radius:999px;font-size:10px;
+    padding:1px 6px;margin-left:6px;}
+  @media (max-width:640px){
+    .spa-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--panel);
+      border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+      justify-content:space-around;flex-wrap:nowrap;overflow-x:auto;margin:0;}
+    .spa-nav button{flex:1 1 0;min-width:0;font-size:9.5px;padding:7px 3px;border:none;background:none;
+      text-align:center;overflow:hidden;text-overflow:ellipsis;}
+    .spa-nav button.on{background:var(--panel-3);color:var(--accent);}
+    .spa-wrap{padding-bottom:76px !important;}
+  }
+  .sec{margin-bottom:18px;}
+  .sec h3{font-size:14px;margin-bottom:8px;color:var(--paper);}
+  .att{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;border-radius:4px;
+    background:var(--panel-2);border:1px solid var(--line);margin-bottom:7px;font-size:13px;}
+  .att.high{border-left:3px solid var(--danger);}
+  .att.warn{border-left:3px solid var(--warn);}
+  .att.info{border-left:3px solid var(--info);}
+  .rings{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;}
+  .ring{background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:12px;
+    text-align:center;}
+  .ring .lab{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;
+    margin-top:6px;}
+  .ring .sub{font-size:11.5px;color:var(--paper-dim);}
+  .tl{position:relative;margin-left:8px;border-left:2px solid var(--line);padding-left:16px;}
+  .tl-item{position:relative;padding:10px 0 14px;}
+  .tl-item:before{content:'';position:absolute;left:-23px;top:15px;width:9px;height:9px;
+    border-radius:50%;background:var(--line);}
+  .tl-item.ok:before{background:var(--good);}
+  .tl-item.now:before{background:var(--accent);}
+  .tl-item.bad:before{background:var(--danger);}
+  .tl-h{font-weight:600;font-size:13.5px;}
+  .tl-m{color:var(--muted);font-size:12px;margin-top:2px;}
+  .bar{height:7px;background:var(--panel-3);border-radius:999px;overflow:hidden;margin:7px 0;}
+  .bar > i{display:block;height:100%;background:var(--accent);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:640px){.grid2{grid-template-columns:1fr;}}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;font-size:12px;}
+  .cal .dow{color:var(--muted);font-size:10px;text-align:center;text-transform:uppercase;}
+  .cal .d{min-height:44px;background:var(--panel-2);border:1px solid var(--line-soft);
+    border-radius:3px;padding:4px;position:relative;}
+  .cal .d.weekend{opacity:.55;}
+  .cal .d.hol{background:var(--info-dim);border-color:var(--info);}
+  .cal .d.lv{background:var(--warn-dim);border-color:var(--accent);}
+  .cal .d .n{font-size:10.5px;color:var(--muted);}
+  .cal .d .tag{font-size:9px;display:block;color:var(--paper);overflow:hidden;white-space:nowrap;}
+  .modal-bg{position:fixed;inset:0;background:rgba(6,11,15,.72);z-index:60;display:flex;
+    align-items:center;justify-content:center;padding:18px;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:6px;max-width:620px;
+    width:100%;max-height:86vh;overflow:auto;padding:20px 22px;}
+  .modal h3{margin-bottom:12px;font-size:16px;}
+  .toasts{position:fixed;right:16px;bottom:16px;z-index:80;display:flex;flex-direction:column;gap:8px;}
+  @media (max-width:640px){.toasts{left:12px;right:12px;bottom:78px;}}
+  .toast{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:4px;padding:10px 13px;font-size:13px;box-shadow:0 8px 22px rgba(0,0,0,.4);}
+  .toast.bad{border-left-color:var(--danger);}
+  .toast.good{border-left-color:var(--good);}
+  .skel{background:linear-gradient(90deg,var(--panel-2),var(--panel-3),var(--panel-2));
+    border-radius:4px;height:14px;margin:8px 0;animation:sk 1.2s ease-in-out infinite;}
+  @keyframes sk{0%{opacity:.55}50%{opacity:1}100%{opacity:.55}}
+  @media (prefers-reduced-motion: reduce){.skel{animation:none;}}
+  .k-v{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;}
+  .k-v .k{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;}
+  .k-v .v{font-weight:600;font-size:13.5px;}
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+</style>
+
+<div id="stuSpa" class="hidden spa-wrap">
+  <div class="spa-nav" id="stuNav"></div>
+
+  <div id="v-home" class="spa-view"></div>
+  <div id="v-postings" class="spa-view hidden"></div>
+  <div id="v-dissertation" class="spa-view hidden"></div>
+  <div id="v-leave" class="spa-view hidden"></div>
+  <div id="v-meetings" class="spa-view hidden"></div>
+  <div id="v-documents" class="spa-view hidden"></div>
+  <div id="v-checklist" class="spa-view hidden"></div>
+  <div id="v-profile" class="spa-view hidden"></div>
+  <div id="v-inbox" class="spa-view hidden"></div>
+</div>
+
+<div class="toasts" id="stuToasts"></div>
+<div id="stuModal"></div>
+
+<script>
+/* ------------------------------------------------------------------ helpers */
+var STU = { route: 'home', data: {}, leaveMonth: null, unread: 0 };
+
+function stuSkeleton(id) {
+  var box = document.getElementById(id);
+  if (box) box.innerHTML = '<div class="card"><div class="skel" style="width:40%"></div>' +
+    '<div class="skel"></div><div class="skel" style="width:80%"></div><div class="skel" style="width:60%"></div></div>';
+}
+
+function toast(msg, kind) {
+  var box = document.getElementById('stuToasts');
+  if (!box) return;
+  var d = document.createElement('div');
+  d.className = 'toast' + (kind ? ' ' + kind : '');
+  d.textContent = msg;
+  box.appendChild(d);
+  setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, kind === 'bad' ? 7000 : 4200);
+}
+
+function modal(title, bodyHtml, buttons) {
+  var host = document.getElementById('stuModal');
+  var bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  var m = document.createElement('div');
+  m.className = 'modal';
+  m.innerHTML = '<h3>' + esc(title) + '</h3>' + bodyHtml +
+    '<div class="row-actions" id="mActs"></div>';
+  bg.appendChild(m);
+  host.appendChild(bg);
+  bg.setAttribute('data-bg', '1');
+  (buttons || []).forEach(function (b, i) {
+    var el2 = document.createElement('button');
+    el2.className = 'btn' + (b.secondary ? ' secondary' : '') + ' small';
+    el2.textContent = b.label;
+    el2.setAttribute('data-idx', String(i));
+    el2.addEventListener('click', function () { b.onClick ? b.onClick() : stuCloseModal(); });
+    m.querySelector('#mActs').appendChild(el2);
+  });
+  if (!buttons || !buttons.length) {
+    var c = document.createElement('button');
+    c.className = 'btn small secondary'; c.textContent = 'Close';
+    c.addEventListener('click', stuCloseModal);
+    m.querySelector('#mActs').appendChild(c);
+  }
+  return m;
+}
+
+function stuCloseModal() {
+  document.querySelectorAll('.modal-bg').forEach(function (b) { b.remove(); });
+}
+
+function ring(pct, label, sub) {
+  var p = Math.max(0, Math.min(100, Math.round(pct || 0)));
+  var r = 22, c = 2 * Math.PI * r, off = c - (p / 100) * c;
+  var stroke = p >= 80 ? '#5FAE82' : (p >= 40 ? '#E8A33D' : '#D9634A');
+  return '<div class="ring"><svg width="58" height="58" viewBox="0 0 58 58" role="img" aria-label="' +
+    p + ' percent">' +
+    '<circle cx="29" cy="29" r="' + r + '" fill="none" stroke="#22323E" stroke-width="6"></circle>' +
+    '<circle cx="29" cy="29" r="' + r + '" fill="none" stroke="' + stroke + '" stroke-width="6" ' +
+    'stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) +
+    '" transform="rotate(-90 29 29)"></circle>' +
+    '<text x="29" y="33" text-anchor="middle" fill="#ECEEE9" font-size="14" font-family="IBM Plex Mono, monospace">' +
+    p + '%</text></svg><div class="lab">' + esc(label) + '</div><div class="sub">' + esc(sub || '') + '</div></div>';
+}
+
+function dfmt(s) {
+  if (!s) return '—';
+  var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return String(s);
+  var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return Number(m[3]) + ' ' + months[Number(m[2]) - 1] + ' ' + m[1];
+}
+
+/** A readable label for the loading wheel. */
+function labelFor_(fn) {
+  var L = {
+    stuHome: 'Loading your home\u2026', stuPostings: 'Loading your postings\u2026',
+    stuDissertation: 'Loading your dissertation\u2026', stuLeave: 'Loading your leave\u2026',
+    stuLeaveCalendar: 'Loading the calendar\u2026', stuMeetings: 'Loading meetings\u2026',
+    stuDocuments: 'Loading documents\u2026', stuChecklist: 'Loading your checklist\u2026',
+    stuNotifications: 'Loading your inbox\u2026', stuProfile: 'Loading your profile\u2026',
+    supCohort: 'Loading your students\u2026', supApprovals: 'Loading the queue\u2026',
+    supMeetings: 'Loading meetings\u2026', supLeaveCalendar: 'Loading the team calendar\u2026',
+    supExport: 'Building the file\u2026',
+    adminDashboard: 'Loading the dashboard\u2026', adminStudents: 'Loading students\u2026',
+    adminPlanner: 'Loading the rotation\u2026', adminLeave: 'Loading leave\u2026',
+    adminDissertation: 'Loading dissertation stages\u2026', adminSupervisors: 'Loading supervisors\u2026',
+    adminUsers: 'Loading accounts\u2026', adminSettings: 'Loading settings\u2026',
+    adminAnnouncements: 'Loading notices\u2026', adminAudit: 'Loading the audit log\u2026',
+    adminCohortReport: 'Building the report\u2026', adminStudentFile: 'Loading the student file\u2026'
+  };
+  return L[fn] || 'Loading\u2026';
+}
+
+/**
+ * Warms the other screens in the background, one at a time, so a click on any of them is
+ * already answered from the server's cache instead of being built from scratch.
+ */
+var WARMED = {};
+function prefetchAll(list, gap) {
+  var i = 0;
+  function next() {
+    if (i >= list.length) return;
+    var spec = list[i++];
+    var fn = spec[0], args = spec[1] || [];
+    if (WARMED[fn]) { next(); return; }
+    WARMED[fn] = 1;
+    var go = function () { setTimeout(next, gap || 180); };
+    try { google.script.run.withSuccessHandler(go).withFailureHandler(go)[fn].apply(null, args); }
+    catch (e) { go(); }
+  }
+  setTimeout(next, 600);
+}
+
+function stuRun(fn, args, ok, bad) {
+  stuBusy(true, labelFor_(fn));
+  google.script.run
+    .withSuccessHandler(function (r) {
+      stuBusy(false);
+      if (r === null || r === undefined) {
+        try { google.script.run.clientLog('view ' + STU.route + ' <- ' + fn + ' : ' + describe_(r), 'rpc'); } catch (e) {}
+      }
+      try {
+        ok(r);
+      } catch (e) {
+        var host = document.getElementById('v-' + STU.route);
+        if (host) {
+          host.innerHTML = card_('This screen could not be drawn',
+            esc(String(e.message || e)) + '<div class="note">Please tell the admin this screen and what you were doing.</div>');
+        }
+        try { google.script.run.clientLog('render ' + STU.route + ' threw: ' + (e.message || e), 'render'); } catch (e2) {}
+      }
+    })
+    .withFailureHandler(function (e) {
+      stuBusy(false);
+      var msg = fail(e);
+      if (bad) bad(msg); else toast(msg, 'bad');
+    })
+    [fn].apply(null, args || []);
+}
+
+/** The loading wheel. Counts overlapping calls, so it goes when the last one lands. */
+var BUSY = 0;
+function stuBusy(on, what) {
+  BUSY = on ? BUSY + 1 : Math.max(0, BUSY - 1);
+  var b = document.getElementById('stuBusy');
+  var bar = document.getElementById('stuBar');
+  if (BUSY > 0) {
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'stuBusy';
+      b.innerHTML = '<span class="spin"></span><span id="stuBusyText">Loading\u2026</span>';
+      document.body.appendChild(b);
+    }
+    var t = document.getElementById('stuBusyText');
+    if (t && what) t.textContent = what;
+    if (!bar) { bar = document.createElement('div'); bar.id = 'stuBar'; document.body.appendChild(bar); }
+    bar.className = 'on';
+  } else {
+    if (b) b.remove();
+    if (bar) { bar.className = ''; bar.style.width = '0'; }
+  }
+}
+
+/* ------------------------------------------------------------------- routes */
+var ROUTES = [['home', 'Home'], ['postings', 'Postings'], ['dissertation', 'Dissertation'],
+              ['leave', 'Leave'], ['meetings', 'Meetings'], ['documents', 'Documents'],
+              ['checklist', 'Pass checklist'], ['profile', 'Profile'], ['inbox', 'Inbox']];
+
+function stuEnter() {
+  var spa = document.getElementById('stuSpa');
+  if (spa) spa.className = 'spa-wrap';
+  stuNavRender();
+  stuGo(location.hash.replace('#/', '') || 'home');
+}
+
+function stuNavRender() {
+  var nav = document.getElementById('stuNav');
+  if (!nav) return;
+  nav.innerHTML = ROUTES.map(function (r) {
+    return '<button data-stu="' + r[0] + '" class="' + (STU.route === r[0] ? 'on' : '') + '">' +
+      esc(r[1]) + (r[0] === 'inbox' && STU.unread ? '<span class="n">' + STU.unread + '</span>' : '') + '</button>';
+  }).join('');
+}
+
+function stuGo(route) {
+  if (!ROUTES.some(function (r) { return r[0] === route; })) route = 'home';
+  STU.route = route;
+  if (location.hash !== '#/' + route) location.hash = '#/' + route;
+  document.querySelectorAll('.spa-view').forEach(function (v) { v.className = 'spa-view hidden'; });
+  var view = document.getElementById('v-' + route);
+  if (view) view.className = 'spa-view';
+  stuNavRender();
+  stuSkeleton('v-' + route);
+  ({ home: stuRenderHome, postings: stuRenderPostings, dissertation: stuRenderDissertation,
+     leave: stuRenderLeave, meetings: stuRenderMeetings, documents: stuRenderDocuments,
+     checklist: stuRenderChecklist, profile: stuRenderProfile, inbox: stuRenderInbox }[route])();
+}
+
+document.addEventListener('click', function (ev) {
+  var n = ev.target.closest ? ev.target.closest('[data-stu]') : null;
+  if (n) { ev.preventDefault(); stuGo(n.getAttribute('data-stu')); return; }
+  var a = ev.target.closest ? ev.target.closest('[data-sact]') : null;
+  if (!a) return;
+  ev.preventDefault();
+  var id = a.getAttribute('data-sid') || '';
+  var acts = {
+    postingDone: stuPostingDone, milestoneSubmit: stuMilestoneSubmit, milestoneDate: stuMilestoneDate,
+    extension: stuExtension, leaveForm: stuLeaveForm, leavePreview: stuLeavePreview,
+    leaveCancel: stuLeaveCancel, meetingForm: stuMeetingForm, docForm: stuDocForm,
+    docUpload: stuDocUpload, comment: stuCommentForm, readNotif: stuReadNotif,
+    calPrev: function () { stuShiftMonth(-1); }, calNext: function () { stuShiftMonth(1); },
+    profileEdit: stuProfileEdit, altEmail: stuAltEmail, addComment: stuAddCommentModal
+  };
+  if (acts[a.getAttribute('data-sact')]) acts[a.getAttribute('data-sact')](id);
+});
+
+window.addEventListener('hashchange', function () {
+  var r = location.hash.replace('#/', '') || 'home';
+  if (r !== STU.route) stuGo(r);
+});
+
+/* --------------------------------------------------------------- S1 home */
+function stuRenderHome() {
+  stuRun('stuHome', [TOKEN], function (d) {
+    if (!d || d.error || !d.rings || !d.leave) { document.getElementById('v-' + STU.route).innerHTML = card_('Home', esc(reason_(d))); return; }
+    STU.data.home = d;
+    var att = (d.attention || []).map(function (a) {
+      return '<div class="att ' + esc(a.severity) + '"><div>' + esc(a.text) + '</div></div>';
+    }).join('') || '<div class="note">Nothing needs your attention right now.</div>';
+
+    var r = d.rings;
+    var rings = '<div class="rings">' +
+      ring(r.dissertation.pct, 'Dissertation', r.dissertation.done + ' of ' + r.dissertation.total + ' verified') +
+      ring(r.postings.pct, 'Postings', r.postings.done + ' of ' + r.postings.total + ' completed') +
+      ring(r.readiness.pct, 'Pass readiness', r.readiness.done + ' of ' + r.readiness.total + ' met') +
+      ring(r.meetings.pct, 'Meetings', r.meetings.done + ' of ' + r.meetings.total + ' this semester') +
+      '</div>';
+
+    var bal = (d.leave.balances || []).map(function (b) {
+      var right = (!b.entitlement && b.entitlement !== 0)
+        ? (b.used ? esc(b.used + ' day(s) recorded') : 'no limit set')
+        : esc(b.remaining + ' of ' + b.entitlement + ' left');
+      return '<div class="k-v"><div><div class="k">' + esc(b.type) + '</div><div class="v">' + right +
+             (b.pending ? ' <span class="badge warn">' + esc(b.pending) + ' pending</span>' : '') + '</div></div></div>';
+    }).join('');
+
+    var np = d.nextPosting;
+    var next = np ? ('<div class="k-v"><div><div class="k">Next posting</div><div class="v">' +
+        esc(np['tempat'] || '—') + '</div></div><div><div class="k">Starts</div><div class="v">' +
+        dfmt(np['startDate']) + '</div></div><div><div class="k">Ends</div><div class="v">' +
+        dfmt(np['endDate']) + '</div></div></div>') :
+      '<div class="note">No future posting is recorded. Ask the admin to add one.</div>';
+
+    var ann = (d.announcements || []).map(function (a) {
+      return '<div class="att info"><div><b>' + esc(a.title) + '</b><div class="note">' + esc(a.body || '') + '</div></div></div>';
+    }).join('') || '<div class="note">No announcements.</div>';
+
+    document.getElementById('v-home').innerHTML =
+      card_('Needs your attention', att) +
+      card_('Progress', rings) +
+      '<div class="grid2">' + card_('Leave balance ' + esc(d.leave.year), bal || '<div class="note">No leave types configured.</div>') +
+      card_('Next posting', next) + '</div>' +
+      card_('Announcements', ann);
+  });
+}
+
+/* A dead end must say what came back, not just "could not load". */
+function reason_(d) {
+  if (d === null) return 'The server returned nothing for this screen.';
+  if (d === undefined) return 'No answer came back from the server.';
+  if (d && d.error) return 'Error: ' + d.error;
+  try { return 'Unexpected answer: ' + JSON.stringify(d).slice(0, 220); } catch (e) { return 'Unexpected answer.'; }
+}
+
+/* What arrived, in words, for the log. */
+function describe_(r) {
+  if (r === null) return 'NULL';
+  if (r === undefined) return 'undefined';
+  var kind = typeof r;
+  if (kind !== 'object') return kind + ' ' + String(r).slice(0, 40);
+  if (Array.isArray(r)) return 'array of ' + r.length;
+  return 'object keys=' + Object.keys(r).join(',');
+}
+
+function card_(title, body) {
+  return '<div class="card"><div class="sec"><h3>' + esc(title) + '</h3>' + body + '</div></div>';
+}
+
+/* ------------------------------------------------------------ S3 postings */
+function stuRenderPostings() {
+  stuRun('stuPostings', [TOKEN], function (d) {
+    if (!d || d.error || !d.postings) { document.getElementById('v-' + STU.route).innerHTML = card_('Postings', esc(reason_(d))); return; }
+    STU.data.postings = d;
+    var items = (d.postings || []).map(function (p) {
+      var cls = String(p.status) === 'Completed' ? 'ok' : (String(p.status) === 'Pending Verification' ? 'now' : '');
+      var says = { Completed: 'Verified and closed', 'Pending Verification': 'Waiting for your supervisor to verify' };
+      var note = says[String(p.status)] || ('Status: ' + String(p.status || 'Active'));
+      var tail = '';
+      if (p.status === 'Pending Verification') tail = '<div class="row-actions"><button class="btn small secondary" data-sact="comment" data-sid="' + esc(p.id) + '">Add a note</button></div>';
+      else tail = '<div class="row-actions"><button class="btn small" data-sact="postingDone" data-sid="' + esc(p.id) + '">Mark completed</button>' +
+                  '<button class="btn small secondary" data-sact="extension" data-sid="' + esc(p.roundNo) + '">Request extension</button></div>';
+      return '<div class="tl-item ' + cls + '"><div class="tl-h">' + esc(p.tempat || 'Posting ' + p.roundNo) + '</div>' +
+        '<div class="tl-m">' + dfmt(p.startDate) + ' → ' + dfmt(p.endDate) +
+        (p.daysLeft !== null && p.daysLeft >= 0 ? ' · ' + esc(p.daysLeft) + ' day(s) left' : '') + '</div>' +
+        '<div class="tl-m">' + esc(note) + (p.evaluationUrl ? ' · <a href="' + esc(p.evaluationUrl) + '" target="_blank" rel="noopener">document</a>' : '') + '</div>' +
+        (p.studentNote ? '<div class="note">' + esc(p.studentNote) + '</div>' : '') + tail + '</div>';
+    }).join('') || '<div class="note">No postings recorded yet.</div>';
+
+    var exts = (d.extensions || []).map(function (x) {
+      return '<div class="att ' + (String(x.status) === 'Approved' ? 'info' : 'warn') + '"><div>' +
+        '<b>Round ' + esc(x.roundNo) + '</b> · ' + esc(x.status) + '<div class="note">' + esc(x.reason || '') +
+        '<br>' + dfmt(x.startDate) + ' → ' + dfmt(x.endDate) +
+        (x.decisionNote ? '<br>Supervisor: ' + esc(x.decisionNote) : '') + '</div></div></div>';
+    }).join('') || '<div class="note">No extension requests.</div>';
+
+    document.getElementById('v-postings').innerHTML =
+      card_('My postings (rotation rounds)', '<div class="tl">' + items + '</div>') +
+      card_('Extension requests', exts);
+  });
+}
+
+function stuPostingDone(id) {
+  modal('Mark this posting completed', '<div class="note">Say what you did and paste a link to your evaluation or logbook if you have one. Your supervisor is asked to verify it.</div>' +
+    '<label for="pdNote">What you completed</label><textarea id="pdNote" rows="3" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>' +
+    '<label for="pdLink">Evaluation or logbook link (optional)</label><input id="pdLink" type="url" placeholder="https://">',
+    [{ label: 'Send for verification', onClick: function () {
+        var note = document.getElementById('pdNote').value, link = document.getElementById('pdLink').value;
+        stuRun('stuCompletePosting', [TOKEN, id, note, link], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Sent to your supervisor to verify.', 'good'); stuGo('postings');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function stuExtension(roundNo) {
+  modal('Request an extension', '<div class="note">Give the dates you would need and why.</div>' +
+    '<div class="grid2"><div><label for="exFrom">From</label><input id="exFrom" type="date"></div>' +
+    '<div><label for="exTo">To</label><input id="exTo" type="date"></div></div>' +
+    '<label for="exWhy">Reason</label><textarea id="exWhy" rows="3" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>',
+    [{ label: 'Send to supervisor', onClick: function () {
+        stuRun('stuRequestExtension', [TOKEN, roundNo, document.getElementById('exWhy').value,
+          document.getElementById('exFrom').value, document.getElementById('exTo').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Extension request sent.', 'good'); stuGo('postings');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+/* -------------------------------------------------------- S4 dissertation */
+function stuRenderDissertation() {
+  stuRun('stuDissertation', [TOKEN], function (d) {
+    if (!d || d.error || !d.milestones || !d.progress) { document.getElementById('v-' + STU.route).innerHTML = card_('Dissertation', esc(reason_(d))); return; }
+    STU.data.diss = d;
+    var items = (d.milestones || []).map(function (m) {
+      var cls = String(m.status) === 'Verified' ? 'ok' : (String(m.status) === 'Revision requested' ? 'bad' : '');
+      var acts2 = '';
+      if (String(m.status) !== 'Verified') {
+        acts2 = '<div class="row-actions">' +
+          '<button class="btn small" data-sact="milestoneSubmit" data-sid="' + esc(m.id) + '">Submit for verification</button>' +
+          '<button class="btn small secondary" data-sact="milestoneDate" data-sid="' + esc(m.id) + '">Propose target date</button>' +
+          '<button class="btn small secondary" data-sact="addComment" data-sid="' + esc(m.id) + '">Comment</button></div>';
+      }
+      var cs = (d.comments || []).filter(function (c) { return String(c.entityId) === String(m.id); })
+        .map(function (c) { return '<div class="tl-m">' + esc(c.who) + ': ' + esc(c.text) + '</div>'; }).join('');
+      return '<div class="tl-item ' + cls + '"><div class="tl-h">' + esc(m.milestone) + '</div>' +
+        '<div class="tl-m">' + esc(m.status) + ' · target ' + dfmt(m.targetDate || m.proposedTargetDate) +
+        (m.weight ? ' · weight ' + esc(m.weight) + '%' : '') + '</div>' +
+        (m.progressNote ? '<div class="note">' + esc(m.progressNote) + '</div>' : '') +
+        (m.supervisorNote ? '<div class="note">Supervisor: ' + esc(m.supervisorNote) + '</div>' : '') + cs + acts2 + '</div>';
+    }).join('') || '<div class="note">No milestones.</div>';
+
+    document.getElementById('v-dissertation').innerHTML =
+      card_('Overall progress', ring(d.progress.weightedPct, 'Weighted completion',
+           d.progress.verified + ' of ' + d.progress.total + ' verified') +
+           (d.next ? '<div class="note">Next up: <b>' + esc(d.next.milestone) + '</b></div>' : '')) +
+      card_('Milestones', '<div class="tl">' + items + '</div>');
+  });
+}
+
+function stuMilestoneSubmit(id) {
+  modal('Submit this milestone for verification',
+    '<label for="msNote">What you did</label><textarea id="msNote" rows="4" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>' +
+    '<label for="msLink">Document or link (optional)</label><input id="msLink" type="url" placeholder="https://">',
+    [{ label: 'Submit', onClick: function () {
+        stuRun('stuSubmitMilestone', [TOKEN, id, document.getElementById('msNote').value,
+          document.getElementById('msLink').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Submitted for verification.', 'good'); stuGo('dissertation');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function stuMilestoneDate(id) {
+  modal('Propose a target date', '<label for="msDate">Date</label><input id="msDate" type="date">' +
+    '<label for="msWhy">Note (optional)</label><input id="msWhy" type="text">',
+    [{ label: 'Send to supervisor', onClick: function () {
+        stuRun('stuProposeMilestone', [TOKEN, id, document.getElementById('msDate').value,
+          document.getElementById('msWhy').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Target date proposed.', 'good'); stuGo('dissertation');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function stuAddCommentModal(id) {
+  modal('Add a comment', '<label for="cmText">Comment</label><textarea id="cmText" rows="3" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>',
+    [{ label: 'Post', onClick: function () {
+        stuRun('stuAddComment', [TOKEN, 'dissertation', id, document.getElementById('cmText').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); stuGo('dissertation');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function stuCommentForm(id) {
+  modal('Add a note', '<label for="cmText2">Note</label><textarea id="cmText2" rows="3" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>',
+    [{ label: 'Post', onClick: function () {
+        stuRun('stuAddComment', [TOKEN, 'posting', id, document.getElementById('cmText2').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); stuGo('postings');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+/* ----------------------------------------------------------------- S5 leave */
+function stuRenderLeave() {
+  stuRun('stuLeave', [TOKEN], function (d) {
+    if (!d || d.error || !d.balances) { document.getElementById('v-' + STU.route).innerHTML = card_('Leave', esc(reason_(d))); return; }
+    STU.data.leave = d;
+    if (!STU.leaveMonth) {
+      var n = new Date();
+      STU.leaveMonth = n.getFullYear() + '-' + ('0' + (n.getMonth() + 1)).slice(-2);
+    }
+    var bal = (d.balances.balances || []).map(function (b) {
+      return '<div class="att"><div><b>' + esc(b.type) + '</b><div class="note">' +
+        ((!b.entitlement && b.entitlement !== 0) ? 'No limit set for this type'
+          : esc(b.remaining) + ' of ' + esc(b.entitlement) + ' remaining') +
+        (b.pending ? ' · ' + esc(b.pending) + ' day(s) awaiting a decision' : '') + '</div></div></div>';
+    }).join('');
+    var list = (d.leave || []).map(function (l) {
+      var can = String(l.status) === 'Pending';
+      return '<div class="tl-item"><div class="tl-h">' + esc(l.type) + ' · ' + dfmt(l.startDate) + ' → ' + dfmt(l.endDate) + '</div>' +
+        '<div class="tl-m">' + esc(l.workingDays) + ' working day(s) · ' + esc(l.status) +
+        (String(l.halfDay).toUpperCase() === 'TRUE' ? ' · half day' : '') + '</div>' +
+        (l.reason ? '<div class="note">' + esc(l.reason) + '</div>' : '') +
+        (l.supervisorNote ? '<div class="note">Supervisor: ' + esc(l.supervisorNote) + '</div>' : '') +
+        (can ? '<div class="row-actions"><button class="btn small secondary" data-sact="leaveCancel" data-sid="' + esc(l.id) + '">Cancel this request</button></div>' : '') +
+        '</div>';
+    }).join('') || '<div class="note">No leave recorded.</div>';
+
+    document.getElementById('v-leave').innerHTML =
+      card_('My balances ' + esc(d.balances.year), bal) +
+      card_('Request leave', '<div class="row-actions"><button class="btn" data-sact="leaveForm">New request</button></div>' +
+        '<div class="note">Weekends and public holidays are not counted. Overlapping requests are blocked, and the balance cannot go below zero.</div>') +
+      card_('Leave calendar', '<div id="stuCal"></div>') +
+      card_('My leave', '<div class="tl">' + list + '</div>');
+    stuCalendar();
+  });
+}
+
+function stuCalendar() {
+  stuRun('stuLeaveCalendar', [TOKEN, STU.leaveMonth], function (c) {
+    if (!c || c.error) return;
+    var hol = {}; (c.holidays || []).forEach(function (h) { hol[h.date] = h.name; });
+    var lv = {}; (c.leave || []).forEach(function (l) {
+      c.days.forEach(function (d) { if (d.date >= l.from && d.date <= l.to) lv[d.date] = l.type; });
+    });
+    var cells = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(function (x) { return '<div class="dow">' + x + '</div>'; }).join('');
+    var first = new Date(Number(STU.leaveMonth.slice(0, 4)), Number(STU.leaveMonth.slice(5, 7)) - 1, 1).getDay();
+    for (var i = 0; i < first; i++) cells += '<div></div>';
+    (c.days || []).forEach(function (d) {
+      var cls = 'd' + (d.weekend ? ' weekend' : '') + (hol[d.date] ? ' hol' : '') + (lv[d.date] ? ' lv' : '');
+      cells += '<div class="' + cls + '" title="' + esc(hol[d.date] || lv[d.date] || '') + '">' +
+        '<span class="n">' + Number(d.date.slice(8)) + '</span>' +
+        (lv[d.date] ? '<span class="tag">' + esc(lv[d.date]) + '</span>' : '') +
+        (hol[d.date] ? '<span class="tag">' + esc(hol[d.date]) + '</span>' : '') + '</div>';
+    });
+    var host = document.getElementById('stuCal');
+    if (!host) return;
+    var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    host.innerHTML = '<div class="row-actions" style="justify-content:space-between;align-items:center">' +
+      '<button class="btn small secondary" data-sact="calPrev">← Previous</button>' +
+      '<b>' + esc(months[Number(STU.leaveMonth.slice(5, 7)) - 1]) + ' ' + esc(STU.leaveMonth.slice(0, 4)) + '</b>' +
+      '<button class="btn small secondary" data-sact="calNext">Next →</button></div>' +
+      '<div class="cal">' + cells + '</div>';
+  });
+}
+
+function stuShiftMonth(delta) {
+  var y = Number(STU.leaveMonth.slice(0, 4)), m = Number(STU.leaveMonth.slice(5, 7)) - 1 + delta;
+  var d = new Date(y, m, 1);
+  STU.leaveMonth = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+  stuCalendar();
+}
+
+function stuLeaveForm() {
+  var types = (STU.data.leave && STU.data.leave.types) || ['Annual', 'Emergency', 'Medical (MC)', 'Study/Exam', 'Other'];
+  modal('Request leave',
+    '<div class="grid2"><div><label for="lvType">Type</label><select id="lvType">' +
+      types.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '</select></div>' +
+    '<div><label for="lvHalf">Half day</label><select id="lvHalf"><option value="">No</option><option value="1">Yes (single date)</option></select></div></div>' +
+    '<div class="grid2"><div><label for="lvFrom">From</label><input id="lvFrom" type="date"></div>' +
+    '<div><label for="lvTo">To</label><input id="lvTo" type="date"></div></div>' +
+    '<label for="lvWhy">Reason</label><textarea id="lvWhy" rows="3" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>' +
+    '<div id="lvPrev" class="note"></div>',
+    [{ label: 'Check working days', secondary: true, onClick: function () { stuLeavePreview(); } },
+     { label: 'Send request', onClick: function () { stuLeaveSubmit(); } },
+     { label: 'Cancel', secondary: true }]);
+}
+
+function stuLeavePreview() {
+  var half = document.getElementById('lvHalf').value === '1';
+  stuRun('stuLeavePreview', [TOKEN, document.getElementById('lvType').value,
+    document.getElementById('lvFrom').value, document.getElementById('lvTo').value, half], function (p) {
+    var box = document.getElementById('lvPrev');
+    if (!box) return;
+    if (p && p.error) { box.innerHTML = '<span style="color:var(--danger)">' + esc(p.error) + '</span>'; return; }
+    box.innerHTML = '<b>' + esc(p.workingDays) + ' working day(s)</b> (' + esc(p.calendarDays) + ' calendar). ' +
+      ((!p.balance.entitlement && p.balance.entitlement !== 0) ? ''
+        : 'Balance after: <b>' + esc(p.balance.after) + '</b>. ') +
+      (p.clashes.length ? '<span style="color:var(--danger)">Clashes with leave ' + esc(p.clashes[0].from) + ' → ' + esc(p.clashes[0].to) + '.</span>' :
+        (!p.balance.ok ? '<span style="color:var(--danger)">' + esc(p.balance.note) + '</span>' : '<span style="color:var(--good)">No clash.</span>'));
+  });
+}
+
+function stuLeaveSubmit() {
+  var half = document.getElementById('lvHalf').value === '1';
+  stuRun('stuSubmitLeave', [TOKEN, { type: document.getElementById('lvType').value,
+    startDate: document.getElementById('lvFrom').value, endDate: document.getElementById('lvTo').value,
+    halfDay: half, reason: document.getElementById('lvWhy').value }], function (r) {
+    if (r && r.error) { toast(r.error, 'bad'); return; }
+    stuCloseModal(); toast('Leave request sent (' + r.workingDays + ' working day(s)).', 'good'); stuGo('leave');
+  });
+}
+
+function stuLeaveCancel(id) {
+  modal('Cancel this leave request', '<div class="note">You can cancel while it is still pending. Once a supervisor has decided, only the admin can change it.</div>',
+    [{ label: 'Yes, cancel it', onClick: function () {
+        stuRun('stuCancelLeave', [TOKEN, id], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Request cancelled.', 'good'); stuGo('leave');
+        });
+      } }, { label: 'Keep it', secondary: true }]);
+}
+
+/* -------------------------------------------------------------- S6 meetings */
+function stuRenderMeetings() {
+  stuRun('stuMeetings', [TOKEN], function (d) {
+    if (!d || d.error || !d.meetings) { document.getElementById('v-' + STU.route).innerHTML = card_('Meetings', esc(reason_(d))); return; }
+    var list = (d.meetings || []).map(function (m) {
+      return '<div class="tl-item"><div class="tl-h">' + dfmt(m.date) + ' · ' + esc(m.mode) + '</div>' +
+        '<div class="note">' + esc(m.summary) + '</div>' +
+        (m.actionPoints ? '<div class="tl-m">Actions: ' + esc(m.actionPoints) + '</div>' : '') +
+        '<div class="tl-m">' + (m.nextMeeting ? 'Next: ' + dfmt(m.nextMeeting) : 'No next meeting set') +
+        (m.acknowledgedAt ? ' · acknowledged' : ' · not acknowledged yet') + '</div></div>';
+    }).join('') || '<div class="note">No meetings logged.</div>';
+    var over = (d.overdue || []).map(function (m) {
+      return '<div class="att warn"><div>You logged a next meeting for <b>' + dfmt(m.nextMeeting) + '</b> that has passed.</div></div>';
+    }).join('');
+    document.getElementById('v-meetings').innerHTML =
+      card_('Supervision meetings', over + '<div class="row-actions"><button class="btn" data-sact="meetingForm">Log a meeting</button></div>' +
+        '<div class="note">' + esc(d.logged) + ' logged. The department asks for at least ' +
+        '<b>' + esc(2) + '</b> per semester.</div>') +
+      card_('History', '<div class="tl">' + list + '</div>');
+  });
+}
+
+function stuMeetingForm() {
+  modal('Log a supervision meeting',
+    '<label for="mtDate">Date</label><input id="mtDate" type="date">' +
+    '<label for="mtMode">How</label><select id="mtMode"><option>In person</option><option>Online</option><option>Phone</option><option>Other</option></select>' +
+    '<label for="mtSum">What was discussed</label><textarea id="mtSum" rows="3" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>' +
+    '<label for="mtAct">Action points</label><input id="mtAct" type="text">' +
+    '<label for="mtNext">Next meeting (optional)</label><input id="mtNext" type="date">',
+    [{ label: 'Save', onClick: function () {
+        stuRun('stuLogMeeting', [TOKEN, { date: document.getElementById('mtDate').value,
+          mode: document.getElementById('mtMode').value, summary: document.getElementById('mtSum').value,
+          actionPoints: document.getElementById('mtAct').value, nextMeeting: document.getElementById('mtNext').value }],
+          function (r) {
+            if (r && r.error) { toast(r.error, 'bad'); return; }
+            stuCloseModal(); toast('Meeting logged.', 'good'); stuGo('meetings');
+          });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+/* ------------------------------------------------------------- S7 documents */
+function stuRenderDocuments() {
+  stuRun('stuDocuments', [TOKEN], function (d) {
+    if (!d || d.error || !d.documents) { document.getElementById('v-' + STU.route).innerHTML = card_('Documents', esc(reason_(d))); return; }
+    var list = (d.documents || []).map(function (x) {
+      return '<div class="tl-item"><div class="tl-h">' + esc(x.title) + '</div>' +
+        '<div class="tl-m">' + esc(x.category) + ' · ' + esc(x.status) + ' · ' + esc(x.uploadedAt) + '</div>' +
+        (x.url ? '<div class="tl-m"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">Open</a></div>' : '') +
+        (x.note ? '<div class="note">' + esc(x.note) + '</div>' : '') + '</div>';
+    }).join('') || '<div class="note">Nothing uploaded yet.</div>';
+    document.getElementById('v-documents').innerHTML =
+      card_('Documents', '<div class="row-actions"><button class="btn" data-sact="docForm">Add a document</button></div>' +
+        '<div class="note">Accepted: ' + esc(d.accepted) + ', up to ' + esc(d.maxMb) + ' MB.</div>') +
+      card_('On file', '<div class="tl">' + list + '</div>');
+  });
+}
+
+function stuDocForm() {
+  modal('Add a document',
+    '<label for="dcTitle">Title</label><input id="dcTitle" type="text" placeholder="e.g. Ethics approval letter">' +
+    '<label for="dcCat">Category</label><input id="dcCat" type="text" placeholder="e.g. Ethics, Logbook, Progress report">' +
+    '<label for="dcUrl">Link to the file</label><input id="dcUrl" type="url" placeholder="https://drive.google.com/...">' +
+    '<div class="note">Uploads straight from the page need a Drive permission the department has not granted yet, so paste a link for now. Nothing is lost — the admin can attach the file for you.</div>',
+    [{ label: 'Save', onClick: function () {
+        stuRun('stuAddDocument', [TOKEN, { title: document.getElementById('dcTitle').value,
+          category: document.getElementById('dcCat').value, url: document.getElementById('dcUrl').value }], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Document added.', 'good'); stuGo('documents');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function stuDocUpload() { toast('Uploading from the page is not switched on yet — paste a link instead.', 'bad'); }
+
+/* ----------------------------------------------------------- S8 checklist */
+function stuRenderChecklist() {
+  stuRun('stuChecklist', [TOKEN], function (d) {
+    if (!d || d.error || !d.items) { document.getElementById('v-' + STU.route).innerHTML = card_('Pass checklist', esc(reason_(d))); return; }
+    var items = (d.items || []).map(function (i) {
+      return '<div class="att ' + (i.met ? 'info' : 'warn') + '"><div><b>' + esc(i.name) + '</b> ' +
+        (i.mandatory ? '<span class="badge warn">required</span>' : '') +
+        '<div class="note">' + esc(i.detail) + '</div></div></div>';
+    }).join('') || '<div class="note">No requirements configured.</div>';
+    document.getElementById('v-checklist').innerHTML =
+      card_('Pass checklist', ring(d.pct, 'Complete', d.done + ' of ' + d.total + ' met')) +
+      card_('What is still needed', items +
+        '<div class="note">These items are marked TO CONFIRM until the department supplies its real rules.</div>');
+  });
+}
+
+/* ------------------------------------------------------------- S2 profile */
+function stuRenderProfile() {
+  stuRun('stuProfile', [TOKEN], function (p) {
+    if (!p || p.error || !p.name) { document.getElementById('v-' + STU.route).innerHTML = card_('Profile', esc(reason_(p))); return; }
+    STU.data.profile = p;
+    var rows = [['Name', p.name], ['MMC number', p.mmc], ['Programme', p.program], ['Year / status', p.tahunSt],
+                ['University', p.universiti], ['Supervisor', p.supervisor], ['Reporting date', dfmt(p.tarikhLaporDiri)],
+                ['Posting ends', dfmt(p.tarikhTamatJabatan)], ['IC number', p.ic]]
+      .map(function (r) { return '<div><div class="k">' + esc(r[0]) + '</div><div class="v">' + esc(r[1] || '—') + '</div></div>'; }).join('');
+    document.getElementById('v-profile').innerHTML =
+      card_('My record', '<div class="k-v">' + rows + '</div><div class="note">IC number and address are visible to you and the admin only.</div>') +
+      card_('Contact details', '<div class="k-v"><div><div class="k">Phone</div><div class="v">' + esc(p.phone || '—') + '</div></div>' +
+        '<div><div class="k">Email for sign-in</div><div class="v">' + esc(p.email || '—') + '</div></div>' +
+        '<div><div class="k">Address</div><div class="v">' + esc(p.alamat || '—') + '</div></div></div>' +
+        '<div class="row-actions"><button class="btn" data-sact="profileEdit">Edit my contact details</button>' +
+        '<button class="btn secondary" data-sact="altEmail">Ask to add another email</button></div>');
+  });
+}
+
+function stuProfileEdit() {
+  var p = STU.data.profile || {};
+  modal('My contact details', '<label for="pfPhone">Phone</label><input id="pfPhone" type="text" value="' + esc(p.phone || '') + '">' +
+    '<label for="pfEmail">Email for sign-in</label><input id="pfEmail" type="email" value="' + esc(p.email || '') + '">' +
+    '<label for="pfAddr">Address</label><textarea id="pfAddr" rows="3" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px">' + esc(p.alamat || '') + '</textarea>',
+    [{ label: 'Save', onClick: function () {
+        stuRun('stuSaveProfile', [TOKEN, { phone: document.getElementById('pfPhone').value,
+          email: document.getElementById('pfEmail').value, alamat: document.getElementById('pfAddr').value }], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Saved.', 'good'); stuGo('profile');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function stuAltEmail() {
+  modal('Add another email for signing in', '<label for="aeMail">The email</label><input id="aeMail" type="email">' +
+    '<label for="aeWhy">Why</label><input id="aeWhy" type="text" placeholder="e.g. the department email is not mine">' +
+    '<div class="note">An admin approves this before it can be used to sign in.</div>',
+    [{ label: 'Send request', onClick: function () {
+        stuRun('stuRequestAltEmail', [TOKEN, document.getElementById('aeMail').value,
+          document.getElementById('aeWhy').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Request sent to the admin.', 'good');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+/* --------------------------------------------------------------- S9 inbox */
+function stuRenderInbox() {
+  stuRun('stuNotifications', [TOKEN], function (d) {
+    if (!d || d.error || !d.notifications) { document.getElementById('v-' + STU.route).innerHTML = card_('Inbox', esc(reason_(d))); return; }
+    STU.unread = d.unread || 0; stuNavRender();
+    var list = (d.notifications || []).map(function (n) {
+      return '<div class="att ' + (n.read ? '' : 'warn') + '"><div><b>' + esc(n.title) + '</b>' +
+        '<div class="note">' + esc(n.body || '') + '</div>' +
+        '<div class="tl-m">' + esc(n.createdAt) + (n.link ? ' · <a href="' + esc(n.link) + '" target="_blank" rel="noopener">open</a>' : '') + '</div></div>' +
+        (n.read ? '' : '<button class="btn small secondary" data-sact="readNotif" data-sid="' + esc(n.id) + '">Mark read</button>') +
+        '</div>';
+    }).join('') || '<div class="note">Nothing in your inbox.</div>';
+    document.getElementById('v-inbox').innerHTML =
+      card_('Inbox', '<div class="note">' + esc(d.unread) + ' unread. Email is ' +
+        (String(d.mailEnabled).toLowerCase() === 'true' ? 'switched on' : 'switched off — the department sends nothing yet') + '.</div>') +
+      card_('Messages', list);
+  });
+}
+
+function stuReadNotif(id) {
+  stuRun('stuMarkNotificationRead', [TOKEN, id], function () { stuGo('inbox'); });
+}
+</script>
+
+    </div>
+
+    <div id="viewSupervisor" class="hidden">
+      <!-- ============================================================================
+     Supervisor.html - the supervisor portal: my cohort, one approvals queue, a full page
+     per student, the team leave calendar, meetings and export. Reuses the toast, modal,
+     ring and escaping helpers defined by Student.html, which is loaded first.
+     ============================================================================ -->
+<div id="supSpa" class="hidden spa-wrap">
+  <div class="spa-nav" id="supNav"></div>
+
+  <div id="sv-cohort" class="spa-view"></div>
+  <div id="sv-queue" class="spa-view hidden"></div>
+  <div id="sv-student" class="spa-view hidden"></div>
+  <div id="sv-calendar" class="spa-view hidden"></div>
+  <div id="sv-meetings" class="spa-view hidden"></div>
+  <div id="sv-export" class="spa-view hidden"></div>
+</div>
+
+<style>
+  .tbl-wrap{overflow-x:auto;}
+  .tbl{width:100%;border-collapse:collapse;}
+  .tbl th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;
+    text-align:left;padding:8px 7px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  .tbl td{padding:9px 7px;border-bottom:1px solid var(--line-soft);font-size:12.5px;vertical-align:middle;}
+  .tbl tr.clickable{cursor:pointer;}
+  .tbl tr.clickable:hover{background:var(--panel-2);}
+  .risk{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;}
+  .risk.red{background:var(--danger);}
+  .risk.amber{background:var(--warn);}
+  .risk.green{background:var(--good);}
+  .mini{display:flex;gap:4px;align-items:center;}
+  .mini .bar{flex:1;margin:0;height:5px;}
+  .q-item{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);
+    border-radius:4px;background:var(--panel-2);margin-bottom:8px;}
+  .q-item .age{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;}
+  .q-item .age.old{color:var(--danger);}
+  .q-item .body{flex:1;min-width:0;}
+  .q-item .kind{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .toolbar input[type=text]{max-width:260px;}
+  .toolbar select{max-width:200px;}
+  .chip{border:1px solid var(--line);background:var(--panel-2);color:var(--paper-dim);border-radius:999px;
+    padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;}
+  .chip.on{background:var(--accent);color:#1a1206;border-color:var(--accent);font-weight:600;}
+  .note-private{border-left:3px solid var(--info);}
+</style>
+
+<script>
+var SUPP = { route: 'cohort', data: {}, queue: [], selected: {}, filter: 'all', search: '', sort: 'risk',
+             month: null, studentId: null };
+
+/* --------------------------------------------------------------- plumbing */
+function supRun(fn, args, ok, bad) {
+  stuBusy(true, labelFor_(fn));
+  google.script.run
+    .withSuccessHandler(function (r) {
+      stuBusy(false);
+      if (r === null || r === undefined) {
+        try { google.script.run.clientLog('supervisor ' + SUPP.route + ' <- ' + fn + ' : ' + describe_(r), 'rpc'); } catch (e) {}
+      }
+      try { ok(r); }
+      catch (e) {
+        var host = document.getElementById('sv-' + SUPP.route);
+        if (host) host.innerHTML = card_('This screen could not be drawn', esc(String(e.message || e)));
+        try { google.script.run.clientLog('supervisor render ' + SUPP.route + ' threw: ' + (e.message || e), 'render'); } catch (e2) {}
+      }
+    })
+    .withFailureHandler(function (e) { stuBusy(false); if (bad) bad(fail(e)); else toast(fail(e), 'bad'); })
+    [fn].apply(null, args || []);
+}
+
+var SUP_ROUTES = [['cohort', 'My students'], ['queue', 'Approvals'], ['calendar', 'Leave calendar'],
+                  ['meetings', 'Meetings'], ['export', 'Export']];
+
+function supEnter() {
+  var spa = document.getElementById('supSpa');
+  if (spa) spa.className = 'spa-wrap';
+  supNavRender();
+  supGo(SUPP.route || 'cohort');}
+
+function supNavRender() {
+  var nav = document.getElementById('supNav');
+  if (!nav) return;
+  var pending = (SUPP.data.cohort && SUPP.data.cohort.queue) ? SUPP.data.cohort.queue.length : 0;
+  nav.innerHTML = SUP_ROUTES.map(function (r) {
+    var badge_ = (r[0] === 'queue' && pending) ? '<span class="n">' + pending + '</span>' : '';
+    return '<button data-vgo="' + r[0] + '" class="' + (SUPP.route === r[0] ? 'on' : '') + '">' +
+      esc(r[1]) + badge_ + '</button>';
+  }).join('');
+}
+
+/* 'student' is a real route but not a nav button - it is reached from a cohort row. */
+var SUP_VIEWS = SUP_ROUTES.concat([['student', 'Student']]);
+
+function supGo(route) {
+  if (!SUP_VIEWS.some(function (r) { return r[0] === route; })) route = 'cohort';
+  SUPP.route = route;
+  document.querySelectorAll('#supSpa .spa-view').forEach(function (v) { v.className = 'spa-view hidden'; });
+  var view = document.getElementById('sv-' + route);
+  if (view) view.className = 'spa-view';
+  supNavRender();
+  stuSkeleton('sv-' + route);
+  ({ cohort: supRenderCohort, queue: supRenderQueue, student: supRenderStudent,
+     calendar: supRenderCalendar, meetings: supRenderMeetings, export: supRenderExport }[route])();
+}
+
+document.addEventListener('click', function (ev) {
+  var g = ev.target.closest ? ev.target.closest('[data-vgo]') : null;
+  if (g) { ev.preventDefault(); supGo(g.getAttribute('data-vgo')); return; }
+  var a = ev.target.closest ? ev.target.closest('[data-vact]') : null;
+  if (!a) return;
+  ev.preventDefault();
+  var id = a.getAttribute('data-vid') || '';
+  var acts = {
+    openStudent: supOpenStudent, decide: supDecideForm, bulk: supBulk, pick: supPick,
+    pickAll: supPickAll, verify: supVerifyForm, setDate: supSetDateForm, addMilestone: supAddMilestoneForm,
+    note: supNoteForm, comment: supCommentForm, logMeeting: supLogMeetingForm, csv: supDownloadCsv,
+    print: supPrint, calPrev: function () { supMonth(-1); }, calNext: function () { supMonth(1); },
+    riskFilter: supRiskFilter, markMeeting: supVerifyForm
+  };
+  if (acts[a.getAttribute('data-vact')]) acts[a.getAttribute('data-vact')](id, a);
+});
+
+/* ------------------------------------------------------------ V1 cohort */
+function supRenderCohort() {
+  supRun('supCohort', [TOKEN], function (d) {
+    if (!d || d.error || !d.students) {
+      document.getElementById('sv-' + SUPP.route).innerHTML = card_('My students', esc(reason_(d)));
+      return;
+    }
+    SUPP.data.cohort = d;
+    supNavRender();
+    var rank = { red: 0, amber: 1, green: 2 };
+    var rows = d.students.slice();
+    if (SUPP.filter !== 'all') rows = rows.filter(function (s) { return s.risk.level === SUPP.filter; });
+    var q = SUPP.search.trim().toLowerCase();
+    if (q) rows = rows.filter(function (s) { return (s.name + ' ' + s.program + ' ' + s.posting + ' ' + s.universiti).toLowerCase().indexOf(q) > -1; });
+    if (SUPP.sort === 'name') rows.sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+    else if (SUPP.sort === 'pending') rows.sort(function (a, b) { return b.pending - a.pending; });
+    else if (SUPP.sort === 'dissertation') rows.sort(function (a, b) { return a.rings.dissertation.weightedPct - b.rings.dissertation.weightedPct; });
+    else rows.sort(function (a, b) { return rank[a.risk.level] - rank[b.risk.level] || String(a.name).localeCompare(String(b.name)); });
+
+    var counts = { red: 0, amber: 0, green: 0 };
+    d.students.forEach(function (s) { counts[s.risk.level]++; });
+
+    var table = rows.map(function (s) {
+      return '<tr class="clickable" data-vact="openStudent" data-vid="' + esc(s.studentId) + '">' +
+        '<td><span class="risk ' + esc(s.risk.level) + '"></span><b>' + esc(s.name) + '</b>' +
+          '<div class="note" style="margin:2px 0 0">' + esc(s.program || '') + ' · ' + esc(s.tahunSt || '') +
+          (s.risk.reasons.length ? ' · ' + esc(s.risk.reasons[0].text) : '') + '</div></td>' +
+        '<td>' + esc(s.universiti || '—') + '</td>' +
+        '<td>' + esc(s.posting || '—') + (s.status ? '<div class="note" style="margin:2px 0 0">' + esc(s.status) + '</div>' : '') + '</td>' +
+        '<td style="min-width:120px"><div class="mini"><span class="mono" style="font-size:11px">' +
+          esc(s.rings.dissertation.weightedPct) + '%</span><span class="bar"><i style="width:' + esc(s.rings.dissertation.weightedPct) + '%"></i></span></div>' +
+          '<div class="note" style="margin:2px 0 0">' + esc(s.rings.postings.done) + '/' + esc(s.rings.postings.total) + ' postings · ' +
+          esc(s.rings.meetings.done) + '/' + esc(s.rings.meetings.total) + ' meetings</div></td>' +
+        '<td>' + (s.pending ? '<span class="badge warn">' + esc(s.pending) + '</span>' : '<span class="badge good">none</span>') + '</td>' +
+        '<td class="mono" style="font-size:11px">' + esc(s.lastActivity || '—') + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="note">Nothing matches that.</td></tr>';
+
+    document.getElementById('sv-cohort').innerHTML =
+      card_('My students', '<div class="note">' + esc(d.count) + ' assigned to you. ' +
+          counts.red + ' need attention now, ' + counts.amber + ' to watch, ' + counts.green + ' on track.</div>' +
+        '<div class="toolbar" style="margin-top:12px">' +
+          '<input type="text" id="supSearch" placeholder="Search name, programme, posting" value="' + esc(SUPP.search) + '">' +
+          '<button class="chip ' + (SUPP.filter === 'all' ? 'on' : '') + '" data-vact="riskFilter" data-vid="all">All</button>' +
+          '<button class="chip ' + (SUPP.filter === 'red' ? 'on' : '') + '" data-vact="riskFilter" data-vid="red">Needs attention</button>' +
+          '<button class="chip ' + (SUPP.filter === 'amber' ? 'on' : '') + '" data-vact="riskFilter" data-vid="amber">Watch</button>' +
+          '<button class="chip ' + (SUPP.filter === 'green' ? 'on' : '') + '" data-vact="riskFilter" data-vid="green">On track</button>' +
+          '<select id="supSort"><option value="risk">Sort: risk</option><option value="name">name</option>' +
+          '<option value="pending">waiting on me</option><option value="dissertation">least progress</option></select>' +
+        '</div>' +
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>University</th>' +
+        '<th>Posting</th><th>Progress</th><th>Waiting</th><th>Last activity</th></tr></thead><tbody>' +
+        table + '</tbody></table></div>') +
+      card_('What needs you today', (d.queue.length
+        ? d.queue.slice(0, 6).map(function (i) { return supQueueRow(i, false); }).join('') +
+          (d.queue.length > 6 ? '<div class="note">and ' + (d.queue.length - 6) + ' more in Approvals.</div>' : '')
+        : '<div class="note">Nothing is waiting for a decision.</div>'));
+    var s2 = document.getElementById('supSort');
+    if (s2) { s2.value = SUPP.sort; s2.addEventListener('change', function () { SUPP.sort = this.value; supRenderCohort(); }); }
+    var si = document.getElementById('supSearch');
+    if (si) { si.addEventListener('input', function () { SUPP.search = this.value; supRenderCohort(); }); }
+  });
+}
+
+function supRiskFilter(which) { SUPP.filter = which; supRenderCohort(); }
+
+/* --------------------------------------------------------- V2 approvals */
+function supQueueRow(i, selectable) {
+  var old = (i.ageDays !== null && i.ageDays > 3);
+  return '<div class="q-item">' +
+    (selectable ? '<input type="checkbox" data-pick="' + esc(i.kind) + '|' + esc(i.id) + '"' +
+      (SUPP.selected[i.kind + '|' + i.id] ? ' checked' : '') + ' style="width:auto;margin-top:3px">' : '') +
+    '<div class="body"><div class="kind">' + esc(i.kind) + ' · ' + esc(i.student) + '</div>' +
+      '<div>' + esc(i.title) + '</div>' +
+      '<div class="note">' + esc(i.detail || '') + '</div></div>' +
+    '<div class="age' + (old ? ' old' : '') + '">' + (i.ageDays === null ? '—' : esc(i.ageDays) + 'd') + '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:6px">' +
+      '<button class="btn small" data-vact="decide" data-vid="' + esc(i.kind + '|' + i.id) + '">Review</button>' +
+      '<button class="btn small secondary" data-vact="openStudent" data-vid="' + esc(i.studentId) + '">Student</button>' +
+    '</div></div>';
+}
+
+function supRenderQueue() {
+  supRun('supApprovals', [TOKEN], function (d) {
+    if (!d || d.error || !d.items) {
+      document.getElementById('sv-' + SUPP.route).innerHTML = card_('Approvals', esc(reason_(d)));
+      return;
+    }
+    SUPP.data.queue = d;
+    var kinds = Object.keys(d.byKind || {});
+    var chips = kinds.map(function (k) {
+      return '<span class="badge info">' + esc(k) + ' ' + esc(d.byKind[k]) + '</span>';
+    }).join(' ');
+    var picked = Object.keys(SUPP.selected).filter(function (k) { return SUPP.selected[k]; }).length;
+    document.getElementById('sv-queue').innerHTML =
+      card_('Approvals waiting on me', '<div class="note">' + esc(d.total) + ' item(s)' +
+        (d.oldest !== null ? ', oldest ' + esc(d.oldest) + ' day(s)' : '') + '. ' + chips + '</div>' +
+        '<div class="toolbar" style="margin-top:12px">' +
+          '<button class="chip" data-vact="pickAll">Select all</button>' +
+          '<button class="btn small" data-vact="bulk" data-vid="approve"' + (picked ? '' : ' disabled') + '>Approve selected (' + picked + ')</button>' +
+          '<button class="btn small secondary" data-vact="bulk" data-vid="reject">Return selected</button>' +
+        '</div>' +
+        (d.items.length ? d.items.map(function (i) { return supQueueRow(i, true); }).join('')
+                        : '<div class="note">Nothing is waiting. Good.</div>'));
+  });
+}
+
+function supPick(key, box) {
+  var parts = key.split('|');
+  SUPP.selected[parts[0] + '|' + parts[1]] = box.checked;
+  supRenderQueue();
+}
+
+function supPickAll() {
+  var any = Object.keys(SUPP.selected).some(function (k) { return SUPP.selected[k]; });
+  SUPP.selected = {};
+  if (!any) (SUPP.data.queue.items || []).forEach(function (i) { SUPP.selected[i.kind + '|' + i.id] = true; });
+  supRenderQueue();
+}
+
+function supBulk(decision) {
+  var items = Object.keys(SUPP.selected).filter(function (k) { return SUPP.selected[k]; })
+    .map(function (k) { var p = k.split('|'); return { kind: p[0], id: p[1] }; });
+  if (!items.length) { toast('Pick something first.', 'bad'); return; }
+  supDecideForm(null, null, items, decision);
+}
+
+/** Approve or return one item, or a batch, always with an optional note. */
+function supDecideForm(key, node, batch, forced) {
+  var items = batch || null;
+  var kindLabel = items ? items.length + ' item(s)' : String(key).split('|')[0];
+  var body = '<div class="note">' + esc(items ? 'Deciding ' + items.length + ' item(s) at once.'
+    : 'Approve this, or return it with a reason.') + '</div>' +
+    '<label for="dNote">Note to the student (required when returning)</label>' +
+    '<textarea id="dNote" rows="3" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>';
+  var buttons = [];
+  if (!forced || forced === 'approve') buttons.push({ label: 'Approve', onClick: function () {
+    supSendDecision(items, key, 'approve', document.getElementById('dNote').value); } });
+  if (!forced || forced === 'reject') buttons.push({ label: 'Return with note', secondary: true, onClick: function () {
+    supSendDecision(items, key, 'reject', document.getElementById('dNote').value); } });
+  buttons.push({ label: 'Cancel', secondary: true });
+  modal((forced === 'reject' ? 'Return' : 'Approve') + ' — ' + kindLabel, body, buttons);
+}
+
+function supSendDecision(batch, key, decision, note) {
+  if (batch && batch.length) {
+    supRun('supBulkDecide', [TOKEN, batch, decision, note], function (r) {
+      if (r && r.error) { toast(r.error, 'bad'); return; }
+      stuCloseModal(); SUPP.selected = {};
+      toast('Done: ' + r.done + ' approved' + (r.failed.length ? ', ' + r.failed.length + ' failed' : ''), 'good');
+      supGo('queue');
+    });
+    return;
+  }
+  var parts = String(key).split('|');
+  supRun('supDecide', [TOKEN, parts[0], parts[1], decision, note], function (r) {
+    if (r && r.error) { toast(r.error, 'bad'); return; }
+    stuCloseModal();
+    toast((r.decision === 'Approved' ? 'Approved' : 'Returned') + ' — ' + r.student, 'good');
+    if (SUPP.route === 'student') supRenderStudent(); else supGo('queue');
+  });
+}
+
+/* ----------------------------------------------------- V3 one student page */
+function supOpenStudent(studentId) { SUPP.studentId = studentId; supGo('student'); }
+
+function supRenderStudent() {
+  if (!SUPP.studentId) { supGo('cohort'); return; }
+  supRun('supStudent', [TOKEN, SUPP.studentId], function (d) {
+    if (!d || d.error || !d.student) {
+      document.getElementById('sv-student').innerHTML = card_('Student', esc(reason_(d)));
+      return;
+    }
+    var s = d.student, r = d.rings;
+    var head = '<button class="chip" data-vact="openStudent" data-vid="">← all students</button>' +
+      '<div class="k-v" style="margin-top:12px">' +
+      [['Name', s.name], ['MMC', s.mmc], ['Programme', s.program], ['Year / status', s.tahunSt],
+       ['University', s.universiti], ['Status', s.status], ['Posting now', s.jab], ['Period', s.tempoh]]
+      .map(function (p) { return '<div><div class="k">' + esc(p[0]) + '</div><div class="v">' + esc(p[1] || '—') + '</div></div>'; }).join('') +
+      '</div><div class="note">IC number, address and phone are held by the admin only.</div>';
+
+    var risk = d.risk.reasons.length
+      ? d.risk.reasons.map(function (x) { return '<div class="att ' + esc(x.level === 'red' ? 'high' : 'warn') + '"><div>' + esc(x.text) + '</div></div>'; }).join('')
+      : '<div class="note">Nothing is out of step.</div>';
+
+    var rings = '<div class="rings">' +
+      ring(r.dissertation.weightedPct, 'Dissertation', r.dissertation.done + ' of ' + r.dissertation.total) +
+      ring(r.postings.pct, 'Postings', r.postings.done + ' of ' + r.postings.total) +
+      ring(r.readiness.pct, 'Pass readiness', r.readiness.done + ' of ' + r.readiness.total) +
+      ring(r.meetings.pct, 'Meetings', r.meetings.done + ' of ' + r.meetings.total) + '</div>';
+
+    var queue = d.queue.length
+      ? d.queue.map(function (i) { return supQueueRow(i, false); }).join('')
+      : '<div class="note">Nothing of theirs is waiting on you.</div>';
+
+    var posts = d.postings.map(function (p) {
+      var acts = (String(p.status) === 'Pending Verification')
+        ? '<div class="row-actions"><button class="btn small" data-vact="verify" data-vid="posting|' + esc(p.id) + '">Verify</button>' +
+          '<button class="btn small secondary" data-vact="verify" data-vid="posting|' + esc(p.id) + '|reject">Return</button></div>' : '';
+      return '<div class="tl-item ' + (String(p.status) === 'Completed' ? 'ok' : (String(p.status) === 'Pending Verification' ? 'now' : '')) + '">' +
+        '<div class="tl-h">' + esc(p.tempat || ('Round ' + p.roundNo)) + '</div>' +
+        '<div class="tl-m">' + esc(p.startDate || '—') + ' → ' + esc(p.endDate || '—') + ' · ' + esc(p.status) + '</div>' +
+        (p.studentNote ? '<div class="note">' + esc(p.studentNote) + '</div>' : '') +
+        (p.evaluationUrl ? '<div class="tl-m"><a href="' + esc(p.evaluationUrl) + '" target="_blank" rel="noopener">document</a></div>' : '') + acts + '</div>';
+    }).join('') || '<div class="note">No postings recorded.</div>';
+
+    var ms = d.milestones.map(function (m) {
+      var acts = '<div class="row-actions">' +
+        (String(m.status) === 'Submitted'
+          ? '<button class="btn small" data-vact="verify" data-vid="milestone|' + esc(m.id) + '">Verify</button>' +
+            '<button class="btn small secondary" data-vact="verify" data-vid="milestone|' + esc(m.id) + '|reject">Return for revision</button>'
+          : '') +
+        '<button class="btn small secondary" data-vact="setDate" data-vid="' + esc(m.id) + '">Set target date</button>' +
+        '<button class="btn small secondary" data-vact="comment" data-vid="' + esc(m.id) + '">Comment</button></div>';
+      return '<div class="tl-item ' + (String(m.status) === 'Verified' ? 'ok' : (String(m.status) === 'Revision requested' ? 'bad' : '')) + '">' +
+        '<div class="tl-h">' + esc(m.milestone) + '</div>' +
+        '<div class="tl-m">' + esc(m.status) + ' · target ' + esc(m.targetDate || m.proposedTargetDate || 'not set') +
+        (m.weight ? ' · weight ' + esc(m.weight) + '%' : '') + '</div>' +
+        (m.progressNote ? '<div class="note">' + esc(m.progressNote) + '</div>' : '') +
+        (m.supervisorNote ? '<div class="note">My note: ' + esc(m.supervisorNote) + '</div>' : '') + acts + '</div>';
+    }).join('') || '<div class="note">No milestones.</div>';
+
+    var leave = d.leave.list.map(function (l) {
+      var acts = (String(l.status) === 'Pending')
+        ? '<div class="row-actions"><button class="btn small" data-vact="decide" data-vid="leave|' + esc(l.id) + '">Decide</button></div>' : '';
+      return '<div class="tl-item"><div class="tl-h">' + esc(l.type) + ' · ' + esc(l.startDate) + ' → ' + esc(l.endDate) + '</div>' +
+        '<div class="tl-m">' + esc(l.workingDays) + ' working day(s) · ' + esc(l.status) + '</div>' +
+        (l.reason ? '<div class="note">' + esc(l.reason) + '</div>' : '') + acts + '</div>';
+    }).join('') || '<div class="note">No leave recorded.</div>';
+
+    var bal = (d.leave.balances.balances || []).map(function (b) {
+      return '<div class="att"><div><b>' + esc(b.type) + '</b><div class="note">' +
+        ((!b.entitlement && b.entitlement !== 0) ? 'No limit set' : esc(b.remaining) + ' of ' + esc(b.entitlement) + ' left') +
+        (b.pending ? ' · ' + esc(b.pending) + ' pending' : '') + '</div></div></div>';
+    }).join('');
+
+    var meetings = d.meetings.map(function (m) {
+      return '<div class="tl-item"><div class="tl-h">' + esc(m.date) + ' · ' + esc(m.mode) + '</div>' +
+        '<div class="note">' + esc(m.summary) + '</div>' +
+        (m.nextMeeting ? '<div class="tl-m">Next: ' + esc(m.nextMeeting) + '</div>' : '') + '</div>';
+    }).join('') || '<div class="note">No meetings logged.</div>';
+
+    var docs = d.documents.map(function (x) {
+      return '<div class="tl-item"><div class="tl-h">' + esc(x.title) + '</div>' +
+        '<div class="tl-m">' + esc(x.category) + ' · ' + esc(x.status) + ' · ' + esc(x.uploadedAt) + '</div>' +
+        (x.url ? '<div class="tl-m"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">open</a></div>' : '') + '</div>';
+    }).join('') || '<div class="note">Nothing on file.</div>';
+
+    var shared = d.comments.filter(function (c) { return String(c.visibility) !== 'staff'; }).map(function (c) {
+      return '<div class="tl-item"><div class="tl-h">' + esc(c.who) + ' · ' + esc(String(c.at).slice(0, 16)) + '</div>' +
+        '<div class="note">' + esc(c.text) + '</div></div>';
+    }).join('') || '<div class="note">No comments yet.</div>';
+
+    var priv = d.staffNotes.map(function (c) {
+      return '<div class="att info note-private"><div>' + esc(c.text) +
+        '<div class="note">' + esc(String(c.at).slice(0, 16)) + ' · staff only</div></div></div>';
+    }).join('') || '<div class="note">No private notes yet.</div>';
+
+    document.getElementById('sv-student').innerHTML =
+      card_(s.name, head) + card_('Standing', risk + rings) +
+      card_('Waiting on you for this student', queue) +
+      card_('Postings', '<div class="tl">' + posts + '</div>') +
+      card_('Dissertation', '<div class="tl">' + ms + '</div>' +
+        '<div class="row-actions"><button class="btn small secondary" data-vact="addMilestone" data-vid="' + esc(s.studentId) + '">Add a milestone</button></div>') +
+      '<div class="grid2">' + card_('Leave', '<div class="tl">' + leave + '</div>') + card_('Balances', bal) + '</div>' +
+      '<div class="grid2">' + card_('Meetings', '<div class="tl">' + meetings + '</div>' +
+        '<div class="row-actions"><button class="btn small secondary" data-vact="logMeeting" data-vid="' + esc(s.studentId) + '">Log a meeting</button></div>') +
+        card_('Documents', '<div class="tl">' + docs + '</div>') + '</div>' +
+      card_('Comments (student sees these)', shared +
+        '<div class="row-actions"><button class="btn small secondary" data-vact="comment" data-vid="' + esc(s.studentId) + '|general">Add a comment</button></div>') +
+      card_('My private notes (the student never sees these)', priv +
+        '<div class="row-actions"><button class="btn small" data-vact="note" data-vid="' + esc(s.studentId) + '">Add a private note</button></div>');
+  });
+}
+
+function supVerifyForm(key) {
+  var parts = String(key).split('|');
+  var kind = parts[0], id = parts[1];
+  var rejecting = parts[2] === 'reject';
+  var body = '<div class="note">' + esc(kind === 'posting' ? 'Confirm this posting is complete and verified.'
+    : 'Confirm this milestone is done, or return it with what still needs doing.') + '</div>' +
+    '<label for="vNote">Note to the student</label><textarea id="vNote" rows="3" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>';
+  modal((rejecting ? 'Return ' : 'Verify ') + kind, body,
+    [{ label: rejecting ? 'Return it' : 'Verify', onClick: function () {
+        supRun('supDecide', [TOKEN, kind, id, rejecting ? 'reject' : 'approve', document.getElementById('vNote').value],
+          function (r) {
+            if (r && r.error) { toast(r.error, 'bad'); return; }
+            stuCloseModal(); toast('Saved.', 'good'); supRenderStudent();
+          });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function supSetDateForm(milestoneId) {
+  modal('Set the target date', '<label for="mdDate">Date</label><input id="mdDate" type="date">' +
+    '<label for="mdNote">Note (optional)</label><input id="mdNote" type="text">',
+    [{ label: 'Save', onClick: function () {
+        supRun('supVerifyMilestone', [TOKEN, milestoneId, '', document.getElementById('mdNote').value,
+          document.getElementById('mdDate').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Target date set.', 'good'); supRenderStudent();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function supAddMilestoneForm(studentId) {
+  modal('Add a milestone for this student',
+    '<label for="amName">Milestone</label><input id="amName" type="text" placeholder="e.g. Ethics approval">' +
+    '<label for="amDate">Target date</label><input id="amDate" type="date">' +
+    '<label for="amWeight">Weight % (optional)</label><input id="amWeight" type="number" min="0" max="100">',
+    [{ label: 'Add', onClick: function () {
+        supRun('supAddMilestone', [TOKEN, studentId, document.getElementById('amName').value,
+          document.getElementById('amDate').value, document.getElementById('amWeight').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Milestone added.', 'good'); supRenderStudent();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function supNoteForm(studentId) {
+  modal('Private note', '<div class="note">Only you and the admin can read this.</div>' +
+    '<label for="pnText">Note</label><textarea id="pnText" rows="4" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>',
+    [{ label: 'Save', onClick: function () {
+        supRun('supAddNote', [TOKEN, studentId, document.getElementById('pnText').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Note saved.', 'good'); supRenderStudent();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function supCommentForm(key) {
+  var parts = String(key).split('|');
+  var id = parts[0], kind = parts[1] || 'general';
+  modal('Comment the student will see',
+    '<label for="ccText">Comment</label><textarea id="ccText" rows="4" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>',
+    [{ label: 'Post', onClick: function () {
+        var fn = kind === 'general' ? 'supAddComment' : 'supAddComment';
+        supRun(fn, [TOKEN, kind === 'general' ? 'general' : kind, id, SUPP.studentId,
+                    document.getElementById('ccText').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Comment posted.', 'good'); supRenderStudent();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function supLogMeetingForm(studentId) {
+  modal('Log a supervision meeting', '<label for="smDate">Date</label><input id="smDate" type="date">' +
+    '<label for="smMode">How</label><select id="smMode"><option>In person</option><option>Online</option><option>Phone</option><option>Other</option></select>' +
+    '<label for="smSum">What was discussed</label><textarea id="smSum" rows="3" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>' +
+    '<label for="smAct">Action points</label><input id="smAct" type="text">' +
+    '<label for="smNext">Next meeting</label><input id="smNext" type="date">',
+    [{ label: 'Save', onClick: function () {
+        supRun('supLogMeeting', [TOKEN, studentId, { date: document.getElementById('smDate').value,
+          mode: document.getElementById('smMode').value, summary: document.getElementById('smSum').value,
+          actionPoints: document.getElementById('smAct').value, nextMeeting: document.getElementById('smNext').value }], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Meeting logged.', 'good'); supGo('meetings');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+/* ------------------------------------------------------ V5 team calendar */
+function supRenderCalendar() {
+  if (!SUPP.month) {
+    var n = new Date();
+    SUPP.month = n.getFullYear() + '-' + ('0' + (n.getMonth() + 1)).slice(-2);
+  }
+  supRun('supLeaveCalendar', [TOKEN, SUPP.month], function (c) {
+    if (!c || c.error || !c.days) {
+      document.getElementById('sv-calendar').innerHTML = card_('Leave calendar', esc(reason_(c)));
+      return;
+    }
+    var hol = {}, lv = {};
+    (c.holidays || []).forEach(function (h) { hol[h.date] = h.name; });
+    (c.byStudent || []).forEach(function (s) {
+      s.away.forEach(function (a) { c.days.forEach(function (d) { if (d.date >= a.from && d.date <= a.to) lv[d.date] = (lv[d.date] || 0) + 1; }); });
+    });
+    var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    var cells = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(function (x) { return '<div class="dow">' + x + '</div>'; }).join('');
+    var first = new Date(Number(SUPP.month.slice(0, 4)), Number(SUPP.month.slice(5, 7)) - 1, 1).getDay();
+    for (var i = 0; i < first; i++) cells += '<div></div>';
+    c.days.forEach(function (d) {
+      var cls = 'd' + (d.weekend ? ' weekend' : '') + (hol[d.date] ? ' hol' : '') + (lv[d.date] ? ' lv' : '');
+      cells += '<div class="' + cls + '" title="' + esc(hol[d.date] || (lv[d.date] ? lv[d.date] + ' away' : '')) + '">' +
+        '<span class="n">' + Number(d.date.slice(8)) + '</span>' +
+        (lv[d.date] ? '<span class="tag">' + lv[d.date] + ' away</span>' : '') + '</div>';
+    });
+    var away = (c.byStudent || []).map(function (s) {
+      return '<div class="att"><div><b>' + esc(s.name) + '</b>' +
+        s.away.map(function (a) { return '<div class="note">' + esc(a.from) + ' → ' + esc(a.to) + ' · ' + esc(a.type) + ' · ' + esc(a.status) + '</div>'; }).join('') +
+        '</div></div>';
+    }).join('') || '<div class="note">Nobody has leave in this month.</div>';
+    document.getElementById('sv-calendar').innerHTML =
+      card_('Team leave', '<div class="row-actions" style="justify-content:space-between;align-items:center">' +
+        '<button class="btn small secondary" data-vact="calPrev">← Previous</button><b>' +
+        esc(months[Number(SUPP.month.slice(5, 7)) - 1]) + ' ' + esc(SUPP.month.slice(0, 4)) +
+        '</b><button class="btn small secondary" data-vact="calNext">Next →</button></div>' +
+        '<div class="cal" style="margin-top:10px">' + cells + '</div>') +
+      card_('Who is away', away);
+  });
+}
+
+function supMonth(delta) {
+  var y = Number(SUPP.month.slice(0, 4)), m = Number(SUPP.month.slice(5, 7)) - 1 + delta;
+  var d = new Date(y, m, 1);
+  SUPP.month = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+  supRenderCalendar();
+}
+
+/* ---------------------------------------------------------- V6 meetings */
+function supRenderMeetings() {
+  supRun('supMeetings', [TOKEN], function (d) {
+    if (!d || d.error || !d.meetings) {
+      document.getElementById('sv-meetings').innerHTML = card_('Meetings', esc(reason_(d)));
+      return;
+    }
+    var overdue = (d.overdue || []).map(function (m) {
+      return '<div class="att high"><div><b>' + esc(m.student) + '</b> — a next meeting was set for ' +
+        esc(m.nextMeeting) + ' and has passed.<div class="note">' + esc(m.summary) + '</div></div></div>';
+    }).join('') || '<div class="note">No overdue next meetings.</div>';
+    var per = (d.perStudent || []).map(function (p) {
+      var short = p.logged < d.need;
+      return '<div class="att ' + (short ? 'warn' : 'info') + '"><div><b>' + esc(p.name) + '</b>' +
+        '<div class="note">' + esc(p.logged) + ' logged · the department asks for ' + esc(d.need) + ' per semester</div></div></div>';
+    }).join('');
+    var list = d.meetings.slice(0, 40).map(function (m) {
+      return '<div class="tl-item"><div class="tl-h">' + esc(m.date) + ' · ' + esc(m.student) + ' · ' + esc(m.mode) + '</div>' +
+        '<div class="note">' + esc(m.summary) + '</div>' +
+        (m.actionPoints ? '<div class="tl-m">Actions: ' + esc(m.actionPoints) + '</div>' : '') + '</div>';
+    }).join('') || '<div class="note">No meetings logged yet.</div>';
+    document.getElementById('sv-meetings').innerHTML =
+      card_('Overdue next meetings', overdue) +
+      card_('Who is short of meetings', per +
+        '<div class="note">Log one from a student page.</div>') +
+      card_('Recent meetings', '<div class="tl">' + list + '</div>');
+  });
+}
+
+/* ------------------------------------------------------------ V7 export */
+function supRenderExport() {
+  supRun('supCohort', [TOKEN], function (d) {
+    if (!d || d.error || !d.students) {
+      document.getElementById('sv-export').innerHTML = card_('Export', esc(reason_(d)));
+      return;
+    }
+    SUPP.data.cohort = d;
+    var rows = d.students.map(function (s) {
+      return '<tr><td>' + esc(s.no) + '</td><td>' + esc(s.name) + '</td><td>' + esc(s.program) + '</td>' +
+        '<td>' + esc(s.universiti) + '</td><td>' + esc(s.posting || '—') + '</td>' +
+        '<td class="mono">' + esc(s.rings.dissertation.weightedPct) + '%</td>' +
+        '<td>' + esc(s.rings.postings.done) + '/' + esc(s.rings.postings.total) + '</td>' +
+        '<td><span class="risk ' + esc(s.risk.level) + '"></span>' + esc(s.risk.level) + '</td></tr>';
+    }).join('');
+    document.getElementById('sv-export').innerHTML =
+      card_('Export and print', '<div class="note">A CSV opens in Excel; the printable summary is for a department meeting.</div>' +
+        '<div class="row-actions" style="margin-top:10px">' +
+        '<button class="btn" data-vact="csv">Download CSV</button>' +
+        '<button class="btn secondary" data-vact="print">Printable summary</button></div>') +
+      card_('Cohort summary', '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No</th><th>Name</th>' +
+        '<th>Programme</th><th>University</th><th>Posting</th><th>Dissertation</th><th>Postings</th><th>Risk</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table></div>');
+  });
+}
+
+function supDownloadCsv() {
+  supRun('supExport', [TOKEN], function (r) {
+    if (!r || r.error || !r.csv) { toast('Could not build the CSV.', 'bad'); return; }
+    var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = r.filename || 'cohort.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Saved ' + (r.rows || 0) + ' rows.', 'good');
+  });
+}
+
+function supPrint() {
+  var d = SUPP.data.cohort;
+  if (!d || !d.students) { toast('Nothing to print yet.', 'bad'); return; }
+  var w = window.open('', '_blank');
+  if (!w) { toast('Allow pop-ups to print.', 'bad'); return; }
+  var rows = d.students.map(function (s) {
+    return '<tr><td>' + esc(s.no) + '</td><td>' + esc(s.name) + '</td><td>' + esc(s.program) + '</td>' +
+      '<td>' + esc(s.universiti) + '</td><td>' + esc(s.posting || '') + '</td>' +
+      '<td>' + esc(s.rings.dissertation.weightedPct) + '%</td><td>' + esc(s.risk.level) + '</td>' +
+      '<td>' + esc(s.risk.reasons.map(function (x) { return x.text; }).join('; ')) + '</td></tr>';
+  }).join('');
+  w.document.write('<html><head><title>Cohort summary</title><style>body{font-family:sans-serif;font-size:12px}' +
+    'table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:4px 6px;text-align:left}' +
+    'th{background:#eee}</style></head><body><h2>Masters cohort — ' + esc(d.supervisor) + '</h2>' +
+    '<p>' + esc(d.count) + ' students, printed ' + esc(new Date().toISOString().slice(0, 10)) + '</p>' +
+    '<table><thead><tr><th>No</th><th>Name</th><th>Programme</th><th>University</th><th>Posting</th>' +
+    '<th>Dissertation</th><th>Risk</th><th>Why</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(function () { w.print(); }, 300);
+}
+</script>
+
+    </div>
+
+    <div id="viewAdmin" class="hidden">
+      <!-- ============================================================================
+     Admin.html - the admin portal (A1-A11). Reuses the toast, modal, ring, card and
+     escaping helpers defined by Student.html, which loads first.
+     ============================================================================ -->
+<div id="admSpa" class="hidden spa-wrap">
+  <div class="spa-nav" id="admNav"></div>
+
+  <div id="av-dashboard" class="spa-view"></div>
+  <div id="av-students" class="spa-view hidden"></div>
+  <div id="av-planner" class="spa-view hidden"></div>
+  <div id="av-leave" class="spa-view hidden"></div>
+  <div id="av-thesis" class="spa-view hidden"></div>
+  <div id="av-supervisors" class="spa-view hidden"></div>
+  <div id="av-users" class="spa-view hidden"></div>
+  <div id="av-settings" class="spa-view hidden"></div>
+  <div id="av-notices" class="spa-view hidden"></div>
+  <div id="av-audit" class="spa-view hidden"></div>
+  <div id="av-reports" class="spa-view hidden"></div>
+  <div id="av-file" class="spa-view hidden"></div>
+</div>
+
+<style>
+  .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+  .kpi .box{background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:13px;cursor:pointer;}
+  .kpi .box:hover{border-color:var(--accent);}
+  .kpi .n{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;}
+  .kpi .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .bars{display:flex;flex-direction:column;gap:6px;}
+  .bar-row{display:grid;grid-template-columns:minmax(90px,150px) 1fr 44px;gap:8px;align-items:center;font-size:12px;}
+  .bar-row .track{height:9px;background:var(--panel-3);border-radius:999px;overflow:hidden;}
+  .bar-row .track i{display:block;height:100%;background:var(--accent);}
+  .inline-edit{cursor:pointer;border-bottom:1px dashed var(--line);}
+  .inline-edit:hover{color:var(--accent);border-bottom-color:var(--accent);}
+  .pickbox{width:auto !important;}
+  @media (max-width:640px){ #admNav button{flex:0 0 auto;font-size:10px;padding:7px 9px;} }
+</style>
+
+<script>
+var ADM = { route: 'dashboard', data: {}, picked: {}, filters: {}, search: '', studentId: null, month: null };
+
+function admRun(fn, args, ok, bad) {
+  stuBusy(true, labelFor_(fn));
+  google.script.run
+    .withSuccessHandler(function (r) {
+      stuBusy(false);
+      if (r === null || r === undefined) {
+        try { google.script.run.clientLog('admin ' + ADM.route + ' <- ' + fn + ' : ' + describe_(r), 'rpc'); } catch (e) {}
+      }
+      try { ok(r); }
+      catch (e) {
+        var host = document.getElementById('av-' + ADM.route);
+        if (host) host.innerHTML = card_('This screen could not be drawn', esc(String(e.message || e)));
+        try { google.script.run.clientLog('admin render ' + ADM.route + ' threw: ' + (e.message || e), 'render'); } catch (e2) {}
+      }
+    })
+    .withFailureHandler(function (e) { stuBusy(false); if (bad) bad(fail(e)); else toast(fail(e), 'bad'); })
+    [fn].apply(null, args || []);
+}
+
+var ADM_ROUTES = [['dashboard', 'Dashboard'], ['students', 'Students'], ['planner', 'Rotation'],
+                  ['leave', 'Leave'], ['thesis', 'Dissertation'], ['supervisors', 'Supervisors'],
+                  ['users', 'Users'], ['settings', 'Settings'], ['notices', 'Notices'],
+                  ['audit', 'Audit & backup'], ['reports', 'Reports']];
+var ADM_VIEWS = ADM_ROUTES.concat([['file', 'Student file']]);
+
+function admEnter() {
+  var spa = document.getElementById('admSpa');
+  if (spa) spa.className = 'spa-wrap';
+  admNavRender();
+  admGo(ADM.route || 'dashboard');}
+
+function admNavRender() {
+  var nav = document.getElementById('admNav');
+  if (!nav) return;
+  nav.innerHTML = ADM_ROUTES.map(function (r) {
+    return '<button data-ago="' + r[0] + '" class="' + (ADM.route === r[0] ? 'on' : '') + '">' + esc(r[1]) + '</button>';
+  }).join('');
+}
+
+function admGo(route) {
+  if (!ADM_VIEWS.some(function (r) { return r[0] === route; })) route = 'dashboard';
+  ADM.route = route;
+  document.querySelectorAll('#admSpa .spa-view').forEach(function (v) { v.className = 'spa-view hidden'; });
+  var view = document.getElementById('av-' + route);
+  if (view) view.className = 'spa-view';
+  admNavRender();
+  stuSkeleton('av-' + route);
+  ({ dashboard: admRenderDashboard, students: admRenderStudents, planner: admRenderPlanner,
+     leave: admRenderLeave, thesis: admRenderThesis, supervisors: admRenderSupervisors,
+     users: admRenderUsers, settings: admRenderSettings, notices: admRenderNotices,
+     audit: admRenderAudit, reports: admRenderReports, file: admRenderFile }[route])();
+}
+
+document.addEventListener('click', function (ev) {
+  var g = ev.target.closest ? ev.target.closest('[data-ago]') : null;
+  if (g) { ev.preventDefault(); admGo(g.getAttribute('data-ago')); return; }
+  var a = ev.target.closest ? ev.target.closest('[data-aact]') : null;
+  if (!a) return;
+  ev.preventDefault();
+  var id = a.getAttribute('data-aid') || '';
+  var acts = {
+    filter: admFilter, openFile: function (sid) { ADM.studentId = sid; admGo('file'); },
+    pick: admPick, pickAll: admPickAll, bulk: admBulk, editField: admEditField,
+    importCsv: admImportCsv, dupes: admDuplicates, exportCsv: admExportCsv,
+
+    leaveDecide: admLeaveDecide, leaveEdit: admLeaveEdit, leaveDelete: admLeaveDelete,
+    entitlement: admEntitlementForm, holiday: admHolidayForm, delHoliday: admDelHoliday,
+    requirement: admRequirementForm, delRequirement: admDelRequirement,
+    template: admTemplateForm, applyTemplate: admApplyTemplate,
+    merge: admMerge, nudge: admNudge, user: admUserForm, delUser: admDelUser,
+    setting: admSettingForm, announcement: admAnnouncementForm, delAnnouncement: admDelAnnouncement,
+    backup: admBackup, reminders: admReminders, trigger: admTrigger,
+    reportCohort: admReportCohort, reportStudent: admReportStudent, filterClear: admFilterClear,
+    editPlanner: admPlannerEdit
+  };
+  if (acts[a.getAttribute('data-aact')]) acts[a.getAttribute('data-aact')](id, a);
+});
+
+/* --------------------------------------------------------- A1 dashboard */
+function admRenderDashboard() {
+  admRun('adminDashboard', [TOKEN], function (d) {
+    if (!d || d.error || !d.counts) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Dashboard', esc(reason_(d)));
+      return;
+    }
+    ADM.data.dash = d;
+    var c = d.counts;
+    var kpi = '<div class="kpi">' +
+      kpiBox('students', 'Students', c.students, 'all') +
+      kpiBox('pending', 'Waiting on supervisors', c.pendingLeave + c.pendingOther, 'pending') +
+      kpiBox('risk', 'At risk', c.atRisk, 'risk') +
+      kpiBox('logins', 'Cannot sign in', c.cannotLogIn, 'logins') +
+      kpiBox('leave', 'Leave used', d.leave.pct + '%', 'leave') +
+      kpiBox('thesis', 'Milestones verified', d.milestones.pct + '%', 'thesis') + '</div>';
+
+    function barRows(obj, label) {
+      var keys = Object.keys(obj || {}).sort(function (a, b) { return obj[b] - obj[a]; });
+      var total = keys.reduce(function (t, k) { return t + obj[k]; }, 0) || 1;
+      return keys.slice(0, 10).map(function (k) {
+        return '<div class="bar-row"><span>' + esc(k) + '</span><span class="track"><i style="width:' +
+          Math.round(obj[k] * 100 / total) + '%"></i></span><span class="mono">' + obj[k] + '</span></div>';
+      }).join('');
+    }
+    var funnelTotal = Object.keys(d.funnel).reduce(function (t, k) { return t + d.funnel[k]; }, 0) || 1;
+    var funnel = Object.keys(d.funnel).map(function (k) {
+      return '<div class="bar-row"><span>' + esc(k) + '</span><span class="track"><i style="width:' +
+        Math.round(d.funnel[k] * 100 / funnelTotal) + '%;background:' +
+        (k === 'Verified' ? 'var(--good)' : (k === 'Revision requested' ? 'var(--danger)' : 'var(--accent)')) +
+        '"></i></span><span class="mono">' + d.funnel[k] + '</span></div>';
+    }).join('');
+
+    var changing = (d.changing || []).map(function (x) {
+      return '<div class="att ' + (x.days <= 30 ? 'high' : 'warn') + '"><div><b>' + esc(x.student) + '</b> — ' +
+        esc(x.tempat) + ' ends in ' + esc(x.days) + ' day(s) (' + esc(x.endDate) + ')' +
+        '<div class="row-actions"><button class="btn small secondary" data-aact="openFile" data-aid="' +
+        esc(x.studentId) + '">Open file</button></div></div></div>';
+    }).join('') || '<div class="note">No postings change hands in the next 60 days.</div>';
+
+    var atRisk = (d.atRisk || []).map(function (x) {
+      return '<div class="att ' + esc(x.level === 'red' ? 'high' : 'warn') + '"><div><span class="risk ' +
+        esc(x.level) + '"></span><b>' + esc(x.name) + '</b> · ' + esc(x.supervisor || 'no supervisor') +
+        (x.pending ? ' · ' + esc(x.pending) + ' waiting' : '') +
+        (x.reasons || []).map(function (r) { return '<div class="note">' + esc(r.text) + '</div>'; }).join('') +
+        '<div class="row-actions"><button class="btn small secondary" data-aact="openFile" data-aid="' +
+        esc(x.studentId) + '">Open file</button>' +
+        '<button class="btn small secondary" data-aact="nudge" data-aid="' + esc(x.supervisor || '') + '">Nudge supervisor</button>' +
+        '</div></div></div>';
+    }).join('') || '<div class="note">Nobody is flagged right now.</div>';
+
+    document.getElementById('av-dashboard').innerHTML =
+      card_('Department at a glance', kpi +
+        '<div class="note" style="margin-top:10px">Click a tile to open the matching student list.</div>') +
+      '<div class="grid2">' +
+        card_('Dissertation stage', '<div class="bars">' + funnel + '</div>') +
+        card_('Leave utilisation', '<div class="note">' + esc(d.leave.used) + ' of ' + esc(d.leave.entitled) +
+             ' entitled day(s) used this year.</div><div class="bar"><i style="width:' + esc(d.leave.pct) + '%"></i></div>') +
+      '</div>' +
+      '<div class="grid2">' +
+        card_('Students by status', '<div class="bars">' + barRows(d.byStatus) + '</div>') +
+        card_('Students by university', '<div class="bars">' + barRows(d.byUniversity) + '</div>') +
+      '</div>' +
+      '<div class="grid2">' +
+        card_('Current postings', '<div class="bars">' + barRows(d.byPosting) + '</div>') +
+        card_('Students by year', '<div class="bars">' + barRows(d.byYear) + '</div>') +
+      '</div>' +
+      card_('Postings changing in the next 60 days', changing) +
+      card_('Who needs attention', atRisk);
+  });
+}
+function kpiBox(key, label, n, filter) {
+  return '<div class="box" data-aact="filter" data-aid="' + esc(filter) + '"><div class="n">' + esc(n) +
+    '</div><div class="l">' + esc(label) + '</div></div>';
+}
+function admFilter(which) {
+  ADM.filters = {};
+  ADM.search = '';
+  if (which === 'risk') ADM.filters.risk = 'notgreen';
+  else if (which === 'pending') ADM.filters.pending = true;
+  else if (which === 'logins') ADM.filters.noLogin = true;
+  else if (which === 'thesis') ADM.filters.thesis = true;
+  else if (which === 'leave') ADM.filters.leave = true;
+  admGo('students');
+}
+function admFilterClear() { ADM.filters = {}; admRenderStudents(); }
+
+/* ---------------------------------------------------------- A2 students */
+function admRenderStudents() {
+  admRun('adminStudents', [TOKEN, { includeArchived: !!ADM.filters.archived, search: ADM.search }], function (d) {
+    if (!d || d.error || !d.students) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Students', esc(reason_(d)));
+      return;
+    }
+    ADM.data.students = d;
+    var rows = d.students.slice();
+    var f = ADM.filters;
+    if (f.risk === 'notgreen') rows = rows.filter(function (s) { return s.risk.level !== 'green'; });
+    if (f.pending) rows = rows.filter(function (s) { return s.pending > 0; });
+    if (f.noLogin) rows = rows.filter(function (s) { return !s.email; });
+    if (f.archived) rows = rows.filter(function (s) { return s.archived; });
+
+    var pickedCount = Object.keys(ADM.picked).filter(function (k) { return ADM.picked[k]; }).length;
+    var body = rows.map(function (s) {
+      return '<tr><td><input type="checkbox" class="pickbox" data-pick="' + esc(s.studentId) + '"' +
+        (ADM.picked[s.studentId] ? ' checked' : '') + '></td>' +
+        '<td><span class="risk ' + esc(s.risk.level) + '"></span><span class="inline-edit" data-aact="editField" data-aid="' +
+        esc(s.studentId) + '|NAMA">' + esc(s.name) + '</span>' +
+        '<div class="note" style="margin:2px 0 0"><span class="inline-edit" data-aact="editField" data-aid="' +
+        esc(s.studentId) + '|SUPERVISOR">' + esc(s.supervisor || 'no supervisor') + '</span>' +
+        (s.archived ? ' · archived' : '') + '</div></td>' +
+        '<td><span class="inline-edit" data-aact="editField" data-aid="' + esc(s.studentId) + '|MMC">' +
+        esc(s.mmc || '—') + '</span></td>' +
+        '<td><span class="inline-edit" data-aact="editField" data-aid="' + esc(s.studentId) +
+        '|PROGRAM">' + esc(s.program || '—') + '</span></td>' +
+        '<td><span class="inline-edit" data-aact="editField" data-aid="' + esc(s.studentId) +
+        '|STATUS">' + esc(s.status || '—') + '</span></td>' +
+        '<td><span class="inline-edit" data-aact="editField" data-aid="' + esc(s.studentId) +
+        '|JAB">' + esc(s.jab || '—') + '</span></td>' +
+        '<td class="mono">' + esc(s.rings.dissertation.weightedPct) + '%</td>' +
+        '<td>' + (s.pending ? '<span class="badge warn">' + esc(s.pending) + '</span>' : '') + '</td>' +
+        '<td><button class="btn small secondary" data-aact="openFile" data-aid="' + esc(s.studentId) +
+        '">File</button></td></tr>';
+    }).join('') || '<tr><td colspan="9" class="note">Nothing matches.</td></tr>';
+
+    document.getElementById('av-students').innerHTML =
+      card_('Students (' + rows.length + ((f.risk || f.pending || f.noLogin || f.archived) ? ', filtered' : '') + ')',
+        '<div class="toolbar">' +
+        '<input type="text" id="admSearch" placeholder="Search name, IC, MMC, supervisor" value="' + esc(ADM.search) + '">' +
+        (Object.keys(ADM.filters).length ? '<button class="chip" data-aact="filterClear">Clear filter</button>' : '') +
+        '<button class="chip" data-aact="pickAll">' + (pickedCount ? 'Unselect all' : 'Select all') + '</button>' +
+        '<button class="btn small" data-aact="bulk" data-aid="supervisor">Assign supervisor (' + pickedCount + ')</button>' +
+        '<button class="btn small secondary" data-aact="bulk" data-aid="status">Set status</button>' +
+        '<button class="btn small secondary" data-aact="bulk" data-aid="archive">Archive</button>' +
+        '<button class="btn small secondary" data-aact="bulk" data-aid="restore">Restore</button>' +
+        '<button class="btn small secondary" data-aact="exportCsv">Export CSV</button>' +
+        '<button class="btn small secondary" data-aact="importCsv">Import CSV</button>' +
+        '<button class="btn small secondary" data-aact="dupes">Find duplicates</button>' +
+        '</div>' +
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr><th></th><th>Student</th><th>MMC</th>' +
+        '<th>Programme</th><th>Status</th><th>Posting</th><th>Thesis</th><th>Waiting</th><th></th>' +
+        '</tr></thead><tbody>' + body + '</tbody></table></div>' +
+        '<div class="note">Click any underlined value to edit it. Every edit is written to AuditLog.</div>');
+    var si = document.getElementById('admSearch');
+    if (si) {
+      si.addEventListener('input', function () { ADM.search = this.value; clearTimeout(si._t);
+        si._t = setTimeout(admRenderStudents, 400); });
+    }
+  });
+}
+function admPick(key, box) { ADM.picked[key] = box.checked; admRenderStudents(); }
+function admPickAll() {
+  var any = Object.keys(ADM.picked).some(function (k) { return ADM.picked[k]; });
+  ADM.picked = {};
+  if (!any) (ADM.data.students.students || []).forEach(function (s) { ADM.picked[s.studentId] = true; });
+  admRenderStudents();
+}
+document.addEventListener('change', function (ev) {
+  var b = ev.target;
+  if (!b || !b.getAttribute || !b.getAttribute('data-pick')) return;
+  ADM.picked[b.getAttribute('data-pick')] = b.checked;
+  admRenderStudents();
+});
+
+function admBulk(action) {
+  var ids = Object.keys(ADM.picked).filter(function (k) { return ADM.picked[k]; });
+  if (!ids.length) { toast('Pick at least one student.', 'bad'); return; }
+  if (action === 'archive' || action === 'restore') {
+    admRun('adminBulkStudents', [TOKEN, ids, action, ''], function (r) {
+      if (r && r.error) { toast(r.error, 'bad'); return; }
+      ADM.picked = {}; toast(action + 'd ' + r.changed + ' student(s).', 'good'); admRenderStudents();
+    });
+    return;
+  }
+  var label = action === 'supervisor' ? 'Assign which supervisor?' : 'Set which status?';
+  var list = (ADM.data.students.supervisors || []).join(', ');
+  modal(label, '<div class="note">' + (action === 'supervisor' ? 'Supervisors seen in the roster: ' + esc(list) : 'e.g. ACTIVE, ROTATION, IN CAMPUS') + '</div>' +
+    '<label for="bv">Value</label><input id="bv" type="text">',
+    [{ label: 'Apply', onClick: function () {
+        admRun('adminBulkStudents', [TOKEN, ids, action, document.getElementById('bv').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); ADM.picked = {}; toast('Updated ' + r.changed + '.', 'good'); admRenderStudents();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function admEditField(key) {
+  var parts = String(key).split('|');
+  var sid = parts[0], field = parts[1];
+  var row = null;
+  (ADM.data.students.students || []).forEach(function (s) { if (s.studentId === sid) row = s; });
+  if (!row) return;
+  var current = { NAMA: row.name, MMC: row.mmc, PROGRAM: row.program, STATUS: row.status, JAB: row.jab,
+                  SUPERVISOR: row.supervisor, 'NO K/P': row.ic, 'NO. TEL': row.phone, EMAIL: row.email,
+                  ALAMAT: row.alamat, UNIVERSITI: row.universiti, 'TAHUN /ST': row.tahunSt,
+                  adminNotes: row.adminNotes, intake: row.intake,
+                  expectedGraduation: row.expectedGraduation, altEmails: row.altEmails }[field];
+  modal('Edit ' + field, '<div class="note">Student: ' + esc(row.name) + '</div>' +
+    '<label for="ef">New value</label><input id="ef" type="text" value="' + esc(current || '') + '">',
+    [{ label: 'Save', onClick: function () {
+        var patch = {};
+        patch[field] = document.getElementById('ef').value;
+        admRun('adminSaveStudent', [TOKEN, sid, patch], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Saved ' + field + '.', 'good'); admRenderStudents();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+function admDuplicates() {
+  admRun('adminDuplicates', [TOKEN], function (r) {
+    if (!r || r.error) { toast(reason_(r), 'bad'); return; }
+    var body = (r.duplicates || []).length
+      ? r.duplicates.map(function (g) {
+          return '<div class="att warn"><div><b>' + esc(g.on) + ' ' + esc(g.value) + '</b>' +
+            g.students.map(function (s) { return '<div class="note">' + esc(s.name) + '</div>'; }).join('') + '</div></div>';
+        }).join('')
+      : '<div class="note">No duplicate IC or MMC numbers found.</div>';
+    modal('Duplicate IC or MMC', body, [{ label: 'Close', secondary: true }]);
+  });
+}
+
+function admExportCsv() {
+  admRun('adminExportStudents', [TOKEN], function (r) {
+    if (!r || !r.csv) { toast('Could not build the file.', 'bad'); return; }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([r.csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = r.filename || 'students.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Exported ' + r.rows + ' rows.', 'good');
+  });
+}
+
+function admImportCsv() {
+  modal('Import students from CSV',
+    '<div class="note">Paste a CSV whose first row is the sheet\u2019s own column names (NAMA, MMC, PROGRAM\u2026). Nothing is written until you press Import, and the check runs first.</div>' +
+    '<label for="csvText">CSV</label><textarea id="csvText" rows="7" style="width:100%;font-family:IBM Plex Mono,monospace;font-size:12px;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px"></textarea>' +
+    '<div id="csvPlan" class="note"></div>',
+    [{ label: 'Check first', secondary: true, onClick: function () {
+        admRun('adminImportStudents', [TOKEN, document.getElementById('csvText').value, true], function (r) {
+          var box = document.getElementById('csvPlan');
+          if (r && r.error) { box.innerHTML = '<span style="color:var(--danger)">' + esc(r.error) + '</span>'; return; }
+          box.innerHTML = '<b>' + esc(r.creates) + ' new</b>, <b>' + esc(r.updates) + ' changed</b>, ' +
+            esc(r.skipped) + ' unchanged.' + ((r.duplicates || []).length ? ' Duplicates: ' + esc(r.duplicates.join('; ')) : '');
+        });
+      } },
+     { label: 'Import', onClick: function () {
+        admRun('adminImportStudents', [TOKEN, document.getElementById('csvText').value, false], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Imported: ' + r.created + ' new, ' + r.updated + ' updated.', 'good'); admRenderStudents();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+
+/* ------------------------------------------------- A2b one student's file */
+function admRenderFile() {
+  if (!ADM.studentId) { admGo('students'); return; }
+  admRun('adminStudentFile', [TOKEN, ADM.studentId], function (d) {
+    if (!d || d.error || !d.student) {
+      document.getElementById('av-file').innerHTML = card_('Student file', esc(reason_(d)));
+      return;
+    }
+    var s = d.student, r = d.rings;
+    var facts = [['Name', s.name], ['IC', s.ic], ['MMC', s.mmc], ['Phone', s.phone], ['Email', s.email],
+                 ['Address', s.alamat], ['Programme', s.program], ['Year', s.tahunSt],
+                 ['University', s.universiti], ['Status', s.status], ['Posting', s.jab],
+                 ['Supervisor', s.supervisor], ['Reporting', s.tarikhLaporDiri],
+                 ['Ends', s.tarikhTamatJabatan], ['Admin notes', s.adminNotes]]
+      .map(function (p) { return '<div><div class="k">' + esc(p[0]) + '</div><div class="v">' + esc(p[1] || '—') + '</div></div>'; }).join('');
+    var ms = (d.milestones || []).map(function (m) {
+      return '<div class="tl-item ' + (String(m['status']) === 'Verified' ? 'ok' : '') + '"><div class="tl-h">' +
+        esc(m['milestone']) + '</div><div class="tl-m">' + esc(m['status']) + ' · target ' +
+        esc(m['targetDate'] || m['proposedTargetDate'] || '—') + '</div></div>';
+    }).join('') || '<div class="note">No milestones.</div>';
+    var lv = (d.leave.list || []).map(function (l) {
+      return '<div class="tl-item"><div class="tl-h">' + esc(l['type']) + ' ' + esc(l['startDate']) + ' → ' +
+        esc(l['endDate']) + '</div><div class="tl-m">' + esc(l['workingDays'] || l['days']) + ' day(s) · ' + esc(l['status']) + '</div></div>';
+    }).join('') || '<div class="note">No leave.</div>';
+    var chk = (d.checklist || []).map(function (c) {
+      return '<div class="att ' + (c.met ? 'info' : 'warn') + '"><div>' + esc(c.name) +
+        '<div class="note">' + esc(c.detail) + '</div></div></div>';
+    }).join('');
+    document.getElementById('av-file').innerHTML =
+      card_(s.name, '<button class="chip" data-ago="students">← all students</button>' +
+        '<div class="k-v" style="margin-top:12px">' + facts + '</div>' +
+        '<div class="row-actions"><button class="btn small secondary" data-aact="reportStudent" data-aid="' +
+        esc(s.studentId) + '">Printable summary</button>' +
+        '<button class="btn small secondary" data-aact="editField" data-aid="' + esc(s.studentId) +
+        '|adminNotes">Add an admin note</button></div>') +
+      card_('Standing', '<div class="rings">' +
+        ring(r.dissertation.weightedPct, 'Dissertation', r.dissertation.done + ' of ' + r.dissertation.total) +
+        ring(r.postings.pct, 'Postings', r.postings.done + ' of ' + r.postings.total) +
+        ring(r.readiness.pct, 'Pass readiness', r.readiness.done + ' of ' + r.readiness.total) +
+        ring(r.meetings.pct, 'Meetings', r.meetings.done + ' of ' + r.meetings.total) + '</div>' +
+        (d.risk.reasons || []).map(function (x) { return '<div class="att ' + esc(x.level === 'red' ? 'high' : 'warn') +
+          '"><div>' + esc(x.text) + '</div></div>'; }).join('')) +
+      '<div class="grid2">' + card_('Milestones', '<div class="tl">' + ms + '</div>') +
+        card_('Leave', '<div class="tl">' + lv + '</div>') + '</div>' +
+      card_('Pass checklist', chk);
+  });
+}
+
+/* ---------------------------------------------------- A3 rotation planner */
+function admRenderPlanner() {
+  admRun('adminPlanner', [TOKEN, 8], function (d) {
+    if (!d || d.error || !d.students) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Rotation planner', esc(reason_(d)));
+      return;
+    }
+    ADM.data.planner = d;
+    var head = '<tr><th>Student</th>' + d.months.map(function (m) { return '<th>' + esc(m) + '</th>'; }).join('') + '</tr>';
+    var body = d.students.map(function (s) {
+      return '<tr><td><b>' + esc(s.name) + '</b><div class="note" style="margin:2px 0 0">' +
+        esc(s.supervisor || '') + '</div></td>' +
+        d.months.map(function (m) {
+          var c = s.cells[m];
+          return '<td class="inline-edit" data-aact="editPlanner" data-aid="' + esc(s.studentId) + '|' + esc(m) + '"' +
+            (c ? ' title="' + esc(c.from + ' to ' + c.to) + '"' : '') + '>' +
+            (c ? '<span class="badge ' + (String(c.status) === 'Completed' ? 'good' : 'info') + '">' + esc(c.tempat || '?') + '</span>' : '<span class="note">+</span>') +
+            '</td>';
+        }).join('') + '</tr>';
+    }).join('');
+    var warn = (d.warnings || []).map(function (w) {
+      return '<div class="att high"><div>' + esc(w.department) + ' has ' + esc(w.count) + ' students in ' +
+        esc(w.month) + ', more than the capacity of ' + esc(w.limit) + ' set in Settings.</div></div>';
+    }).join('') || '<div class="note">No department is over capacity in the next ' + d.months.length + ' months.</div>';
+    var load = d.months.map(function (m) {
+      var per = d.load[m] || {};
+      var keys = Object.keys(per);
+      return '<div class="bar-row"><span>' + esc(m) + '</span><span class="track"><i style="width:' +
+        Math.min(100, keys.reduce(function (t, k) { return t + per[k]; }, 0) * 8) + '%"></i></span><span class="mono">' +
+        keys.reduce(function (t, k) { return t + per[k]; }, 0) + '</span></div>';
+    }).join('');
+    document.getElementById('av-planner').innerHTML =
+      card_('Rotation planner', '<div class="note">Click a cell to add or change that student\u2019s posting for the month.</div>' +
+        '<div class="tbl-wrap"><table class="tbl">' + head + body + '</table></div>') +
+      card_('Capacity warnings', warn) +
+      card_('Students posted per month', '<div class="bars">' + load + '</div>');
+  });
+}
+function admPlannerEdit(key) {
+  var parts = String(key).split('|');
+  var sid = parts[0], month = parts[1];
+  var d = ADM.data.planner, student = null;
+  (d.students || []).forEach(function (s) { if (s.studentId === sid) student = s; });
+  var cell = student ? student.cells[month] : null;
+  modal('Posting for ' + (student ? student.name : '') + ' in ' + month,
+    '<label for="ppDept">Department</label><input id="ppDept" type="text" value="' + esc(cell ? cell.tempat : '') + '">' +
+    '<label for="ppFrom">Start</label><input id="ppFrom" type="date" value="' + esc(cell ? cell.from : month + '-01') + '">' +
+    '<label for="ppTo">End</label><input id="ppTo" type="date" value="' + esc(cell ? cell.to : month + '-28') + '">' +
+    '<label for="ppRound">Round number</label><input id="ppRound" type="number" value="' + esc(cell ? cell.roundNo : 1) + '">' +
+    (cell ? '<div class="note">Saving updates the existing posting.</div>' : ''),
+    [{ label: cell ? 'Save' : 'Add', onClick: function () {
+        admRun('adminSavePosting', [TOKEN, { id: cell ? cell.postingId : '', studentId: sid,
+          tempat: document.getElementById('ppDept').value, startDate: document.getElementById('ppFrom').value,
+          endDate: document.getElementById('ppTo').value, roundNo: document.getElementById('ppRound').value,
+          status: 'Active' }], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Saved.', 'good'); admRenderPlanner();
+        });
+      } }, { label: 'Cancel', secondary: true }].concat(cell ? [{ label: 'Delete', secondary: true, onClick: function () {
+        admRun('adminDeletePosting', [TOKEN, cell.postingId], function () {
+          stuCloseModal(); toast('Posting removed.', 'good'); admRenderPlanner(); });
+      } }] : []));
+}
+
+/* ------------------------------------------------------------- A4 leave */
+function admRenderLeave() {
+  admRun('adminLeave', [TOKEN, {}], function (d) {
+    if (!d || d.error || !d.leave) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Leave', esc(reason_(d)));
+      return;
+    }
+    ADM.data.leave = d;
+    var rows = d.leave.slice(0, 200).map(function (l) {
+      var canDecide = String(l.status) === 'Pending';
+      return '<tr><td><b>' + esc(l.student) + '</b></td><td>' + esc(l.type) + '</td>' +
+        '<td class="mono">' + esc(l.startDate) + ' → ' + esc(l.endDate) + '</td>' +
+        '<td>' + esc(l.workingDays) + (String(l.halfDay).toUpperCase() === 'TRUE' ? ' (half)' : '') + '</td>' +
+        '<td><span class="badge ' + (String(l.status) === 'Approved' ? 'good' : (String(l.status) === 'Rejected' ? 'muted' : 'warn')) +
+        '">' + esc(l.status) + '</span></td>' +
+        '<td class="note">' + esc(String(l.reason || '').slice(0, 60)) + '</td>' +
+        '<td><button class="btn small secondary" data-aact="leaveDecide" data-aid="' + esc(l.id) +
+        '">' + (canDecide ? 'Decide' : 'Override') + '</button>' +
+        '<button class="btn small secondary" data-aact="leaveEdit" data-aid="' + esc(l.id) + '">Edit</button>' +
+        '<button class="btn small secondary" data-aact="leaveDelete" data-aid="' + esc(l.id) + '">Delete</button></td></tr>';
+    }).join('') || '<tr><td colspan="7" class="note">No leave recorded.</td></tr>';
+
+    var hol = d.holidays.map(function (h) {
+      return '<div class="att"><div><b>' + esc(h.date) + '</b> ' + esc(h.name) +
+        '<button class="btn small secondary" style="margin-left:8px" data-aact="delHoliday" data-aid="' + esc(h.id) + '">Remove</button></div></div>';
+    }).join('') || '<div class="note">No public holidays entered — working-day maths ignores holidays without them.</div>';
+
+    document.getElementById('av-leave').innerHTML =
+      card_('All leave', '<div class="toolbar"><button class="btn small secondary" data-aact="entitlement">Set a per-student entitlement</button>' +
+        '<span class="note">' + esc(d.count) + ' record(s). Approving below zero is allowed with an override.</span></div>' +
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Type</th><th>Dates</th>' +
+        '<th>Days</th><th>Status</th><th>Reason</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>') +
+      card_('Public holidays', hol + '<div class="row-actions"><button class="btn small secondary" data-aact="holiday">Add a holiday</button></div>');
+  });
+}
+function admLeaveDecide(id) {
+  modal('Decide this leave', '<div class="note">An approval that takes the balance below zero needs the override ticked.</div>' +
+    '<label for="ldNote">Note</label><input id="ldNote" type="text">' +
+    '<label><input type="checkbox" id="ldOver" class="pickbox"> Override the balance check</label>',
+    [{ label: 'Approve', onClick: function () {
+        admRun('adminDecideLeave', [TOKEN, id, 'approve', document.getElementById('ldNote').value,
+          document.getElementById('ldOver').checked], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Approved.', 'good'); admRenderLeave();
+        });
+      } }, { label: 'Reject', secondary: true, onClick: function () {
+        admRun('adminDecideLeave', [TOKEN, id, 'reject', document.getElementById('ldNote').value, true], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Rejected.', 'good'); admRenderLeave();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admLeaveEdit(id) {
+  var row = null;
+  (ADM.data.leave.leave || []).forEach(function (l) { if (l.id === id) row = l; });
+  if (!row) return;
+  modal('Edit leave', '<div class="note">' + esc(row.student) + '</div>' +
+    '<label for="leType">Type</label><select id="leType">' +
+    (ADM.data.leave.types || []).map(function (t) {
+      return '<option' + (t === row.type ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>' +
+    '<label for="leFrom">From</label><input id="leFrom" type="date" value="' + esc(row.startDate) + '">' +
+    '<label for="leTo">To</label><input id="leTo" type="date" value="' + esc(row.endDate) + '">' +
+    '<label for="leStatus">Status</label><select id="leStatus">' +
+    ['Pending', 'Approved', 'Rejected', 'Cancelled'].map(function (x) {
+      return '<option' + (x === row.status ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>',
+    [{ label: 'Save', onClick: function () {
+        admRun('adminEditLeave', [TOKEN, id, { type: document.getElementById('leType').value,
+          startDate: document.getElementById('leFrom').value, endDate: document.getElementById('leTo').value,
+          status: document.getElementById('leStatus').value }], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Saved (' + r.workingDays + ' working day(s)).', 'good'); admRenderLeave();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admLeaveDelete(id) {
+  modal('Delete this leave record', '<div class="note">The row is cleared, and the removal is written to AuditLog. This cannot be undone from here.</div>',
+    [{ label: 'Delete', onClick: function () {
+        admRun('adminDeleteLeave', [TOKEN, id], function () { stuCloseModal(); toast('Removed.', 'good'); admRenderLeave(); });
+      } }, { label: 'Keep it', secondary: true }]);
+}
+function admEntitlementForm() {
+  var students = (ADM.data.students && ADM.data.students.students) || [];
+  modal('Per-student entitlement',
+    '<div class="note">Overrides the department default for one student and one leave type.</div>' +
+    '<label for="enName">Student</label><select id="enName">' + students.map(function (s) {
+      return '<option value="' + esc(s.studentId) + '">' + esc(s.name) + '</option>'; }).join('') + '</select>' +
+    '<label for="enType">Leave type</label><select id="enType">' + ['Annual', 'Emergency', 'Medical (MC)', 'Study/Exam', 'Other'].map(function (t) {
+      return '<option>' + esc(t) + '</option>'; }).join('') + '</select>' +
+    '<label for="enDays">Days</label><input id="enDays" type="number" value="30">',
+    [{ label: 'Save', onClick: function () {
+        admRun('adminSetEntitlement', [TOKEN, document.getElementById('enName').value,
+          document.getElementById('enType').value, document.getElementById('enDays').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Entitlement saved.', 'good');
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admHolidayForm() {
+  modal('Add a public holiday', '<label for="hdDate">Date</label><input id="hdDate" type="date">' +
+    '<label for="hdName">Name</label><input id="hdName" type="text">',
+    [{ label: 'Save', onClick: function () {
+        admRun('adminSaveHoliday', [TOKEN, { date: document.getElementById('hdDate').value,
+          name: document.getElementById('hdName').value }], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Holiday added.', 'good'); admRenderLeave();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admDelHoliday(id) {
+  admRun('adminDeleteHoliday', [TOKEN, id], function () { toast('Removed.', 'good'); admRenderLeave(); });
+}
+
+/* --------------------------------------------------------- A5 dissertation */
+function admRenderThesis() {
+  admRun('adminDissertation', [TOKEN], function (d) {
+    if (!d || d.error || !d.funnel) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Dissertation', esc(reason_(d)));
+      return;
+    }
+    ADM.data.thesis = d;
+    var stages = d.stages.map(function (s) {
+      return '<div class="att"><div><b>' + esc(s) + '</b> — ' + (d.funnel[s] || []).length + ' student(s)' +
+        (d.funnel[s] || []).slice(0, 8).map(function (x) {
+          return '<div class="note">' + esc(x.name) + ' (' + esc(x.verified) + '/' + esc(x.total) + ' verified)</div>'; }).join('') +
+        '</div></div>';
+    }).join('');
+    document.getElementById('av-thesis').innerHTML =
+      card_('Dissertation stages', stages) +
+      card_('Default milestone template', '<div class="note">New students get these milestones, in order. Editing this does not change students who already have milestones.</div>' +
+        '<div class="tl">' + d.template.map(function (t, i) {
+          return '<div class="tl-item"><div class="tl-h">' + esc(i + 1) + '. ' + esc(t) + '</div></div>'; }).join('') + '</div>' +
+        '<div class="row-actions"><button class="btn small secondary" data-aact="template">Edit the template</button>' +
+        '<button class="btn small secondary" data-aact="applyTemplate">Apply it to a student</button></div>');
+  });
+}
+function admTemplateForm() {
+  var cur = (ADM.data.thesis.template || []).join('\n');
+  modal('Milestone template', '<div class="note">One milestone per line, in order.</div>' +
+    '<textarea id="mtText" rows="9" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px">' +
+    esc(cur) + '</textarea>',
+    [{ label: 'Save', onClick: function () {
+        admRun('adminSaveMilestoneTemplate', [TOKEN, document.getElementById('mtText').value.split('\n')], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Template saved.', 'good'); admRenderThesis();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admApplyTemplate() {
+  var students = (ADM.data.thesis.students || []);
+  modal('Add missing template milestones',
+    '<div class="note">Adds any milestone from the template that this student does not already have. Existing ones are untouched.</div>' +
+    '<label for="atStudent">Student</label><select id="atStudent">' + students.map(function (s) {
+      return '<option value="' + esc(s.studentId) + '">' + esc(s.name) + '</option>'; }).join('') + '</select>',
+    [{ label: 'Add', onClick: function () {
+        var sid = document.getElementById('atStudent').value;
+        admRun('adminStudentFile', [TOKEN, sid], function (file) {
+          var have = (file.milestones || []).map(function (m) { return String(m['milestone']).toLowerCase(); });
+          var missing = (ADM.data.thesis.template || []).filter(function (t) { return have.indexOf(String(t).toLowerCase()) === -1; });
+          if (!missing.length) { toast('That student already has every template milestone.', 'bad'); return; }
+          var i = 0;
+          (function next() {
+            if (i >= missing.length) { stuCloseModal(); toast('Added ' + missing.length + ' milestone(s).', 'good'); admRenderThesis(); return; }
+            var name = missing[i++];
+            google.script.run.withSuccessHandler(next).withFailureHandler(function (e) { toast(fail(e), 'bad'); next(); })
+              .supAddMilestone(TOKEN, sid, name, fmtISO_(new Date()), 0);
+          })();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function fmtISO_(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+
+/* ----------------------------------------------------------- A6 supervisors */
+function admRenderSupervisors() {
+  admRun('adminSupervisors', [TOKEN], function (d) {
+    if (!d || d.error || !d.supervisors) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Supervisors', esc(reason_(d)));
+      return;
+    }
+    ADM.data.supers = d;
+    var rows = d.supervisors.map(function (s) {
+      return '<tr><td><b>' + esc(s.name) + '</b></td><td>' + esc(s.students) + '</td>' +
+        '<td>' + (s.pending ? '<span class="badge warn">' + esc(s.pending) + '</span>' : '0') + '</td>' +
+        '<td>' + (s.oldestPending === null ? '—' : esc(s.oldestPending) + 'd') + '</td>' +
+        '<td>' + esc(s.risk.red) + ' red / ' + esc(s.risk.amber) + ' amber</td>' +
+        '<td>' + (s.hasLogin ? (s.hasCode ? 'can sign in' : 'no code') : 'no USERS row') + '</td>' +
+        '<td>' + (s.email ? '<span class="note">' + esc(s.email) + '</span>' : '<span class="badge warn">no email</span>') + '</td>' +
+        '<td><button class="btn small secondary" data-aact="nudge" data-aid="' + esc(s.name) + '">Nudge</button></td></tr>';
+    }).join('');
+    var merges = (d.mergeProposals || []).map(function (p) {
+      return '<div class="att warn"><div><b>' + esc(p.shorter) + '</b> (' + esc(p.studentsUnderShorter) +
+        ' student(s)) could be the same person as <b>' + esc(p.longer) + '</b> (' + esc(p.studentsUnderLonger) + ').' +
+        '<div class="note">' + esc(p.reason) + '</div>' +
+        '<div class="row-actions"><button class="btn small" data-aact="merge" data-aid="' + esc(p.longer) + '|' +
+        esc(p.shorter) + '">Merge into ' + esc(p.longer) + '</button></div></div></div>';
+    }).join('') || '<div class="note">No duplicate supervisor names found.</div>';
+    document.getElementById('av-supervisors').innerHTML =
+      card_('Supervisors', '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Supervisor</th><th>Students</th>' +
+        '<th>Waiting</th><th>Oldest</th><th>Risk</th><th>Sign-in</th><th>Email</th><th></th></tr></thead><tbody>' +
+        rows + '</tbody></table></div>') +
+      card_('Possible duplicates', merges + '<div class="note">Merging moves every student to the name you keep, then marks the other row inactive.</div>');
+  });
+}
+function admMerge(key) {
+  var parts = String(key).split('|');
+  modal('Merge supervisors', '<div class="note">Keep <b>' + esc(parts[0]) + '</b> and merge <b>' + esc(parts[1]) +
+    '</b> into it? Every student moves to the kept name.</div>',
+    [{ label: 'Merge', onClick: function () {
+        admRun('mergeSupervisors', [TOKEN, parts[0], parts[1], false], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Merged ' + r.studentsReassigned + ' student(s).', 'good'); admRenderSupervisors();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admNudge(name) {
+  if (!name) { toast('That student has no supervisor recorded.', 'bad'); return; }
+  admRun('adminNudge', [TOKEN, name], function (r) {
+    if (r && r.error) { toast(r.error, 'bad'); return; }
+    toast(r.emailed ? ('Nudged ' + name + ' (' + r.queued + ' items) to ' + r.emailedTo + '.')
+                    : (r.queued + ' item(s) queued, but ' + name + ' has no email on file.'), r.emailed ? 'good' : 'bad');
+  });
+}
+
+/* ---------------------------------------------------------------- A7 users */
+function admRenderUsers() {
+  admRun('adminUsers', [TOKEN], function (d) {
+    if (!d || d.error || !d.users) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Users', esc(reason_(d)));
+      return;
+    }
+    ADM.data.users = d;
+    var rows = d.users.map(function (u) {
+      return '<tr><td><span class="inline-edit" data-aact="user" data-aid="' + esc(u.rowIndex) + '">' + esc(u.label) + '</span></td>' +
+        '<td>' + esc(u.role) + '</td><td class="mono">' + esc(u.pin) + '</td>' +
+        '<td class="note">' + esc(u.altEmails || '') + '</td>' +
+        '<td>' + (u.active ? '<span class="badge good">active</span>' : '<span class="badge muted">off</span>') + '</td>' +
+        '<td><button class="btn small secondary" data-aact="user" data-aid="' + esc(u.rowIndex) + '">Edit</button>' +
+        '<button class="btn small secondary" data-aact="delUser" data-aid="' + esc(u.rowIndex) + '">Remove</button></td></tr>';
+    }).join('');
+    var blockers = (d.blockers.blockers || []).map(function (b) {
+      return '<div class="att warn"><div><b>' + esc(b.who) + '</b> (' + esc(b.role) + ')<div class="note">' +
+        esc(b.problem) + '</div></div></div>';
+    }).join('') || '<div class="note">Everybody has what they need to sign in.</div>';
+    document.getElementById('av-users').innerHTML =
+      card_('Accounts', '<div class="row-actions"><button class="btn small" data-aact="user">Add an account</button></div>' +
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name or email</th><th>Role</th><th>Code</th>' +
+        '<th>Alternate emails</th><th></th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>') +
+      card_('Cannot sign in yet (' + esc(d.blockers.count) + ')', blockers);
+  });
+}
+function admUserForm(rowIndex) {
+  var u = null;
+  (ADM.data.users.users || []).forEach(function (x) { if (String(x.rowIndex) === String(rowIndex)) u = x; });
+  modal(u ? 'Edit ' + u.label : 'Add an account',
+    '<label for="usLabel">Name or email</label><input id="usLabel" type="text" value="' + esc(u ? u.label : '') + '">' +
+    '<label for="usRole">Role</label><select id="usRole">' + ['Supervisor', 'Admin', 'Student'].map(function (r) {
+      return '<option' + (u && u.role === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select>' +
+    '<label for="usPin">' + (u ? 'New code (leave blank to keep)' : 'Code') + '</label><input id="usPin" type="text">' +
+    '<label for="usAlt">Alternate emails (comma separated)</label><input id="usAlt" type="text" value="' + esc(u ? u.altEmails : '') + '">' +
+    (u ? '<label><input type="checkbox" id="usActive" class="pickbox"' + (u.active ? ' checked' : '') + '> Active</label>' : ''),
+    [{ label: 'Save', onClick: function () {
+        var form = { rowIndex: rowIndex || '', label: document.getElementById('usLabel').value,
+          role: document.getElementById('usRole').value, pin: document.getElementById('usPin').value,
+          altEmails: document.getElementById('usAlt').value,
+          active: u ? document.getElementById('usActive').checked : true };
+        admRun('adminSaveUser', [TOKEN, form], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Saved.', 'good'); admRenderUsers();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admDelUser(rowIndex) {
+  admRun('adminDeleteUser', [TOKEN, rowIndex], function (r) {
+    if (r && r.error) { toast(r.error, 'bad'); return; }
+    toast('Removed.', 'good'); admRenderUsers();
+  });
+}
+
+/* ------------------------------------------------------------- A8 settings */
+function admRenderSettings() {
+  admRun('adminSettings', [TOKEN], function (d) {
+    if (!d || d.error || !d.settings) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Settings', esc(reason_(d)));
+      return;
+    }
+    ADM.data.settings = d;
+    var rows = Object.keys(d.settings).map(function (k) {
+      return '<tr><td class="mono">' + esc(k) + '</td><td>' + esc(d.settings[k] || '') + '</td>' +
+        '<td><button class="btn small secondary" data-aact="setting" data-aid="' + esc(k) + '">Change</button></td></tr>';
+    }).join('');
+    var reqs = (d.requirements || []).map(function (r) {
+      return '<div class="att ' + (r.mandatory ? 'warn' : '') + '"><div><b>' + esc(r.name) + '</b>' +
+        (r.mandatory ? ' <span class="badge warn">required</span>' : '') +
+        '<div class="note">' + esc(r.type) + ' · ' + esc(r.category || '') + ' · ' + esc(r.rule || '') + '</div>' +
+        '<div class="row-actions"><button class="btn small secondary" data-aact="requirement" data-aid="' +
+        esc(r.id) + '">Edit</button><button class="btn small secondary" data-aact="delRequirement" data-aid="' +
+        esc(r.id) + '">Remove</button></div></div></div>';
+    }).join('');
+    document.getElementById('av-settings').innerHTML =
+      card_('Department settings', '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Setting</th><th>Value</th><th></th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<div class="note">MAIL_ENABLED is the master switch for every email the system sends. It stays false until you say otherwise.</div>') +
+      card_('Pass checklist requirements', reqs + '<div class="row-actions"><button class="btn small secondary" data-aact="requirement">Add a requirement</button></div>') +
+      card_('Reminders', '<div id="trigBox" class="note">Checking…</div>' +
+        '<div class="row-actions"><button class="btn small secondary" data-aact="trigger" data-aid="status">Status</button>' +
+        '<button class="btn small" data-aact="trigger" data-aid="install">Switch on the 8am weekday check</button>' +
+        '<button class="btn small secondary" data-aact="trigger" data-aid="remove">Switch it off</button></div>');
+    admRun('adminTriggerStatus', [TOKEN], function (t) {
+      var box = document.getElementById('trigBox');
+      if (!box || !t) return;
+      box.textContent = (t.installed ? 'Switched on: a weekday check at 08:00 ' + t.timeZone + '.'
+                                      : 'Not switched on — nothing runs automatically yet.') +
+        ' Email is ' + (t.mailEnabled ? 'ON' : 'off') + '.' + (t.lastRun ? ' Last run ' + t.lastRun + '.' : '');
+    });
+  });
+}
+function admSettingForm(key) {
+  modal('Change ' + key, '<div class="note">Current: ' + esc(ADM.data.settings.settings[key] || '') + '</div>' +
+    '<label for="stVal">New value</label><input id="stVal" type="text" value="' + esc(ADM.data.settings.settings[key] || '') + '">',
+    [{ label: 'Save', onClick: function () {
+        admRun('adminSaveSetting', [TOKEN, key, document.getElementById('stVal').value], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Saved.', 'good'); admRenderSettings();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admRequirementForm(id) {
+  var r = null;
+  (ADM.data.settings.requirements || []).forEach(function (x) { if (x.id === id) r = x; });
+  modal(r ? 'Edit requirement' : 'Add a requirement',
+    '<label for="rqName">Name</label><input id="rqName" type="text" value="' + esc(r ? r.name : '') + '">' +
+    '<label for="rqType">Type</label><select id="rqType">' + ['posting', 'dissertation', 'document', 'meeting', 'manual'].map(function (t) {
+      return '<option' + (r && r.type === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>' +
+    '<label for="rqRule">Rule (for a document, the category name)</label><input id="rqRule" type="text" value="' + esc(r ? r.rule : '') + '">' +
+    '<label><input type="checkbox" id="rqMand" class="pickbox"' + (r && r.mandatory ? ' checked' : '') + '> Mandatory</label>',
+    [{ label: 'Save', onClick: function () {
+        admRun('adminSaveRequirement', [TOKEN, { id: r ? r.id : '', name: document.getElementById('rqName').value,
+          type: document.getElementById('rqType').value, rule: document.getElementById('rqRule').value,
+          mandatory: document.getElementById('rqMand').checked, category: r ? r.category : 'TO CONFIRM',
+          sortOrder: r ? r.sortOrder : 99 }], function (res) {
+          if (res && res.error) { toast(res.error, 'bad'); return; }
+          stuCloseModal(); toast('Saved.', 'good'); admRenderSettings();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admDelRequirement(id) {
+  admRun('adminDeleteRequirement', [TOKEN, id], function () { toast('Removed.', 'good'); admRenderSettings(); });
+}
+function admTrigger(which) {
+  if (which === 'status') { admRun('adminTriggerStatus', [TOKEN], function (t) {
+      modal('Reminders', '<div class="note">' + esc(t.installed ? 'Switched on.' : 'Not switched on.') +
+        ' Email is ' + esc(t.mailEnabled ? 'ON' : 'off') + '. Last run: ' + esc(t.lastRun || 'never') + '.</div>' +
+        (t.triggers || []).map(function (x) { return '<div class="note">' + esc(x.handler) + ' · ' + esc(x.type) + '</div>'; }).join('')); });
+    return; }
+  admRun(which === 'install' ? 'adminInstallTrigger' : 'adminRemoveTrigger', [TOKEN], function (r) {
+    if (r && r.error) { toast(r.error, 'bad'); return; }
+    toast(which === 'install' ? 'The weekday 8am check is on.' : 'Switched off.', 'good');
+    admRenderSettings();
+  });
+}
+
+/* -------------------------------------------------------------- A9 notices */
+function admRenderNotices() {
+  admRun('adminAnnouncements', [TOKEN], function (d) {
+    if (!d || d.error || !d.announcements) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Notices', esc(reason_(d)));
+      return;
+    }
+    ADM.data.notices = d;
+    var rows = d.announcements.map(function (a) {
+      return '<div class="att ' + (a.expired ? '' : 'info') + '"><div><b>' + esc(a.title) + '</b> ' +
+        (a.expired ? '<span class="badge muted">expired</span>' : '') +
+        '<div class="note">' + esc(a.body) + '</div>' +
+        '<div class="note">' + esc(a.audience) + ' · ' + esc(a.createdAt) +
+        (a.expiresAt ? ' · expires ' + esc(a.expiresAt) : '') + '</div>' +
+        '<div class="row-actions"><button class="btn small secondary" data-aact="announcement" data-aid="' +
+        esc(a.id) + '">Edit</button><button class="btn small secondary" data-aact="delAnnouncement" data-aid="' +
+        esc(a.id) + '">Remove</button></div></div></div>';
+    }).join('') || '<div class="note">No announcements.</div>';
+    document.getElementById('av-notices').innerHTML =
+      card_('Announcements', '<div class="row-actions"><button class="btn small" data-aact="announcement">New announcement</button></div>' + rows) +
+      card_('Where they appear', '<div class="note">Students see student-facing notices on their home screen; supervisors and admins see theirs in the tracker. Nothing is emailed — email stays off until you switch it on.</div>');
+  });
+}
+function admAnnouncementForm(id) {
+  var a = null;
+  (ADM.data.notices.announcements || []).forEach(function (x) { if (x.id === id) a = x; });
+  modal(a ? 'Edit announcement' : 'New announcement',
+    '<label for="anTitle">Title</label><input id="anTitle" type="text" value="' + esc(a ? a.title : '') + '">' +
+    '<label for="anBody">Message</label><textarea id="anBody" rows="4" style="width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);border-radius:4px;padding:9px">' + esc(a ? a.body : '') + '</textarea>' +
+    '<label for="anAud">Audience</label><select id="anAud">' + ['all', 'students', 'supervisors', 'admins'].map(function (x) {
+      return '<option' + (a && a.audience === x ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' +
+    '<label for="anExp">Expires (optional)</label><input id="anExp" type="date" value="' + esc(a ? a.expiresAt : '') + '">',
+    [{ label: 'Save', onClick: function () {
+        admRun('adminSaveAnnouncement', [TOKEN, { id: a ? a.id : '', title: document.getElementById('anTitle').value,
+          body: document.getElementById('anBody').value, audience: document.getElementById('anAud').value,
+          expiresAt: document.getElementById('anExp').value }], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast('Saved.', 'good'); admRenderNotices();
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+function admDelAnnouncement(id) {
+  admRun('adminDeleteAnnouncement', [TOKEN, id], function () { toast('Removed.', 'good'); admRenderNotices(); });
+}
+
+/* --------------------------------------------------------- A10 audit, backup */
+function admRenderAudit() {
+  admRun('adminAudit', [TOKEN, 100, ADM.search], function (d) {
+    if (!d || d.error || !d.rows) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Audit', esc(reason_(d)));
+      return;
+    }
+    var rows = d.rows.map(function (r) {
+      return '<tr><td class="mono note">' + esc(String(r['timestamp'] || '').slice(0, 19)) + '</td>' +
+        '<td>' + esc(r['action']) + '</td><td>' + esc(r['entity']) + '</td>' +
+        '<td class="note">' + esc(String(r['entityId'] || '').slice(0, 24)) + '</td>' +
+        '<td class="note">' + esc(r['actorEmail'] || '') + '</td>' +
+        '<td class="note">' + esc(String(r['after'] || '').slice(0, 90)) + '</td></tr>';
+    }).join('');
+    document.getElementById('av-audit').innerHTML =
+      card_('Backup and reminders',
+        '<div class="row-actions">' +
+        '<button class="btn" data-aact="backup">Take a backup snapshot now</button>' +
+        '<button class="btn secondary" data-aact="reminders">Preview what reminders would send</button>' +
+        '</div><div class="note">The snapshot is a new spreadsheet holding every tab, values and formulas. ' +
+        'The reminder preview sends nothing at all.</div><div id="remBox" class="note"></div>') +
+      card_('Audit log (last ' + esc(d.count) + ')',
+        '<div class="toolbar"><input type="text" id="audFilter" placeholder="Filter by action, entity, person" value="' + esc(ADM.search) + '"></div>' +
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>When</th><th>Action</th><th>Entity</th>' +
+        '<th>Id</th><th>Who</th><th>After</th></tr></thead><tbody>' + rows + '</tbody></table></div>');
+    var f = document.getElementById('audFilter');
+    if (f) f.addEventListener('input', function () { ADM.search = this.value; clearTimeout(f._t); f._t = setTimeout(admRenderAudit, 400); });
+  });
+}
+function admBackup() {
+  admRun('adminBackup', [TOKEN], function (r) {
+    if (r && r.error) { toast(r.error, 'bad'); return; }
+    toast('Backup made: ' + r.name, 'good');
+    modal('Backup taken', '<div class="note">' + esc(r.name) + '</div><div class="note"><a href="' + esc(r.url) +
+      '" target="_blank" rel="noopener">Open the snapshot</a></div>');
+  });
+}
+function admReminders() {
+  admRun('adminReminderPreview', [TOKEN], function (r) {
+    if (r && r.error) { toast(r.error, 'bad'); return; }
+    var box = document.getElementById('remBox');
+    var text = (r.mailEnabled ? 'Email is ON. ' : 'Email is off, so this is a preview only. ') +
+      r.wouldEmail.students + ' student(s), ' + r.wouldEmail.supervisors + ' supervisor(s), ' +
+      r.wouldEmail.admin + ' admin digest would be sent.' +
+      (r.detail.students.length ? '\n\nStudents: ' + r.detail.students.map(function (s) { return s.name + ' (' + s.reason.length + ')'; }).join('; ') : '') +
+      (Object.keys(r.detail.supervisors).length ? '\n\nSupervisors: ' + Object.keys(r.detail.supervisors).map(function (k) { return r.detail.supervisors[k].name + ' (' + r.detail.supervisors[k].items.length + ')'; }).join('; ') : '');
+    if (box) box.textContent = text;
+    toast('Preview ready below the buttons.', 'good');
+  });
+}
+
+/* -------------------------------------------------------------- A11 reports */
+function admRenderReports() {
+  admRun('adminCohortReport', [TOKEN], function (d) {
+    if (!d || d.error || !d.rows) {
+      document.getElementById('av-' + ADM.route).innerHTML = card_('Reports', esc(reason_(d)));
+      return;
+    }
+    ADM.data.report = d;
+    var rows = d.rows.map(function (r) {
+      return '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.program) + '</td><td>' + esc(r.universiti) + '</td>' +
+        '<td>' + esc(r.posting || '—') + '</td><td>' + esc(r.supervisor || '—') + '</td>' +
+        '<td class="mono">' + esc(r.dissertation) + '%</td><td><span class="risk ' + esc(r.risk) + '"></span>' +
+        esc(r.risk) + '</td></tr>';
+    }).join('');
+    document.getElementById('av-reports').innerHTML =
+      card_('Reports', '<div class="row-actions">' +
+        '<button class="btn" data-aact="reportCohort">Printable cohort report</button>' +
+        '<button class="btn secondary" data-aact="reportStudent">Printable student summary</button></div>' +
+        '<div class="note">Both open a clean page you can print or save as PDF for a department meeting.</div>') +
+      card_('Cohort (' + esc(d.count) + ')', '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th>' +
+        '<th>Programme</th><th>University</th><th>Posting</th><th>Supervisor</th><th>Thesis</th><th>Risk</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table></div>');
+  });
+}
+function admReportCohort() {
+  var d = ADM.data.report;
+  if (!d) { toast('Nothing to print yet.', 'bad'); return; }
+  var w = window.open('', '_blank');
+  if (!w) { toast('Allow pop-ups to print.', 'bad'); return; }
+  var rows = d.rows.map(function (r) {
+    return '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.program) + '</td><td>' + esc(r.tahunSt) + '</td>' +
+      '<td>' + esc(r.universiti) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.posting || '') + '</td>' +
+      '<td>' + esc(r.supervisor || '') + '</td><td>' + esc(r.dissertation) + '%</td><td>' + esc(r.postings) + '%</td>' +
+      '<td>' + esc(r.risk) + '</td><td>' + esc(r.why) + '</td></tr>';
+  }).join('');
+  w.document.write('<html><head><title>' + esc(d.short || 'HKL-PoMS') + ' cohort report</title><style>body{font-family:sans-serif;font-size:11px}' +
+    'table{border-collapse:collapse;width:100%}th,td{border:1px solid #888;padding:3px 5px;text-align:left}' +
+    'th{background:#eee}h2{margin:0 0 4px}</style></head><body><h2>' + esc(d.system || '') + '</h2><p style="margin:2px 0 8px">' + esc(d.department) + ' — Masters cohort</p>' +
+    '<p>' + esc(d.count) + ' students · printed ' + esc(d.printedAt) + '</p>' +
+    '<table><thead><tr><th>Name</th><th>Programme</th><th>Year</th><th>University</th><th>Status</th>' +
+    '<th>Posting</th><th>Supervisor</th><th>Thesis</th><th>Postings</th><th>Risk</th><th>Why</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function () { w.print(); }, 300);
+}
+function admReportStudent() {
+  var students = (ADM.data.students && ADM.data.students.students) || [];
+  if (!students.length) { toast('Open Students first.', 'bad'); return; }
+  modal('Printable student summary', '<label for="rsStudent">Student</label><select id="rsStudent">' +
+    students.map(function (s) { return '<option value="' + esc(s.studentId) + '">' + esc(s.name) + '</option>'; }).join('') + '</select>',
+    [{ label: 'Open', onClick: function () {
+        var sid = document.getElementById('rsStudent').value;
+        admRun('adminStudentReport', [TOKEN, sid], function (d) {
+          if (d && d.error) { toast(d.error, 'bad'); return; }
+          stuCloseModal();
+          var w = window.open('', '_blank');
+          if (!w) { toast('Allow pop-ups to print.', 'bad'); return; }
+          var s = d.student;
+          w.document.write('<html><head><title>' + esc(s.name) + ' — ' + esc(d.short || 'HKL-PoMS') + '</title><style>body{font-family:sans-serif;font-size:12px}' +
+            'table{border-collapse:collapse;width:100%;margin:8px 0}th,td{border:1px solid #888;padding:4px 6px;text-align:left}' +
+            'th{background:#eee}h2,h3{margin:6px 0}</style></head><body><h2>' + esc(d.system || '') + '</h2><p style="margin:2px 0 8px">' + esc(d.department) + '</p>' +
+            '<h3>' + esc(s.name) + '</h3><p>MMC ' + esc(s.mmc) + ' · ' + esc(s.program) + ' · ' + esc(s.tahunSt) +
+            ' · ' + esc(s.universiti) + '<br>Status ' + esc(s.status) + ' · posting ' + esc(s.jab || '-') +
+            ' · supervisor ' + esc(s.supervisor || '-') + '<br>Reported ' + esc(s.tarikhLaporDiri || '-') +
+            ' · ends ' + esc(s.tarikhTamatJabatan || '-') + '</p>' +
+            '<h3>Progress</h3><table><tr><th>Thesis</th><td>' + esc(d.rings.dissertation.weightedPct) + '%</td>' +
+            '<th>Postings</th><td>' + esc(d.rings.postings.pct) + '%</td><th>Pass readiness</th><td>' +
+            esc(d.rings.readiness.pct) + '%</td></tr></table>' +
+            '<h3>Milestones</h3><table><tr><th>Milestone</th><th>Status</th><th>Target</th></tr>' +
+            d.milestones.map(function (m) { return '<tr><td>' + esc(m.milestone) + '</td><td>' + esc(m.status) +
+              '</td><td>' + esc(m.target || '') + '</td></tr>'; }).join('') + '</table>' +
+            '<h3>Postings</h3><table><tr><th>Placement</th><th>From</th><th>To</th><th>Status</th></tr>' +
+            d.postings.map(function (p) { return '<tr><td>' + esc(p.tempat) + '</td><td>' + esc(p.from) +
+              '</td><td>' + esc(p.to) + '</td><td>' + esc(p.status) + '</td></tr>'; }).join('') + '</table>' +
+            '<h3>Leave</h3><table><tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th></tr>' +
+            d.leave.map(function (l) { return '<tr><td>' + esc(l.type) + '</td><td>' + esc(l.from) + '</td><td>' +
+              esc(l.to) + '</td><td>' + esc(l.days) + '</td><td>' + esc(l.status) + '</td></tr>'; }).join('') + '</table>' +
+            '<h3>Pass checklist</h3><table><tr><th>Item</th><th>Met</th><th>Detail</th></tr>' +
+            d.checklist.map(function (c) { return '<tr><td>' + esc(c.name) + '</td><td>' + (c.met ? 'yes' : 'no') +
+              '</td><td>' + esc(c.detail) + '</td></tr>'; }).join('') + '</table>' +
+            '<p style="font-size:10px">Printed ' + esc(d.printedAt) + '</p></body></html>');
+          w.document.close(); w.focus();
+          setTimeout(function () { w.print(); }, 400);
+        });
+      } }, { label: 'Cancel', secondary: true }]);
+}
+</script>
+
+    </div>
+
+<script>
+var TOKEN = null, OPTIONS = null;
+var NAMES = { stu: [], sup: [] };
+
+function el(id) { return document.getElementById(id); }
+function show_(view) {
+  el('loginView').className = (view === 'login') ? '' : 'hidden';
+  el('appView').className   = (view === 'login') ? 'hidden' : '';
+}
+function err(msg) { var e = el('loginErr'); e.className = 'err'; e.textContent = msg; }
+function problem(msg) { var a = el('appErr'); a.className = 'err'; a.textContent = msg; }
+function clearMsgs() { el('loginErr').className = 'err hidden'; el('appErr').className = 'err hidden'; }
+function fail(e) { return (e && e.message) ? e.message : String(e); }
+
+function pick(role) {
+  ['Student', 'Supervisor', 'Admin'].forEach(function (r) {
+    el('t' + r).className = 'tab-btn' + (r === role ? ' on' : '');
+    el('form' + r).className = (r === role) ? '' : 'hidden';
+  });
+  el('loginErr').className = 'err hidden';
+}
+
+/* ------------------------------------------------------- name type-ahead */
+function setNames(key, values) { NAMES[key] = (values || []).slice(); }
+
+/* Every button carries data-act instead of an inline onclick, so no user text is ever
+   baked into an event handler. One listener serves them all. */
+document.addEventListener('click', function (ev) {
+  var node = ev.target.closest ? ev.target.closest('[data-act]') : null;
+  if (!node) return;
+  var acts = { pick: pick, doStudent: doStudent, doSupervisor: doSupervisor, doAdmin: doAdmin,
+               signOut: signOut, refreshPins: refreshPins, syncMmc: syncMmc, applyMmc: applyMmc };
+  var fn = acts[node.getAttribute('data-act')];
+  if (fn) { ev.preventDefault(); fn(node.getAttribute('data-arg')); }
+});
+
+function esc(t) {
+  return String(t === undefined || t === null ? '' : t)
+    .replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; });
+}
+
+function matches(key, typed) {
+  var q = String(typed || '').trim().toLowerCase();
+  var all = NAMES[key];
+  if (!q) return all.slice(0, 8);
+  var starts = [], contains = [];
+  all.forEach(function (n) {
+    var l = n.toLowerCase();
+    if (l.indexOf(q) === 0) starts.push(n);
+    else if (l.indexOf(q) > -1) contains.push(n);
+  });
+  return starts.concat(contains);
+}
+
+function suggest(key) {
+  var box = el(key + 'List');
+  var typed = el(key + 'Name').value;
+  var found = matches(key, typed);
+
+  if (!NAMES[key].length) {
+    box.innerHTML = '<li class="none">The name list has not loaded. Refresh the page.</li>';
+    box.className = 'on'; return;
+  }
+  if (!found.length) {
+    box.innerHTML = '<li class="none">No name matches that. Check the spelling, or ask the admin.</li>';
+    box.className = 'on'; return;
+  }
+
+  var q = String(typed || '').trim();
+  box.innerHTML = found.slice(0, 8).map(function (n) {
+    var label = esc(n);
+    if (q) {
+      var i = n.toLowerCase().indexOf(q.toLowerCase());
+      if (i > -1) {
+        label = esc(n.substring(0, i)) + '<b>' + esc(n.substring(i, i + q.length)) + '</b>' +
+                esc(n.substring(i + q.length));
+      }
+    }
+    return '<li onmousedown="pickName(\'' + key + '\', this)" data-v="' + esc(n) + '">' + label + '</li>';
+  }).join('') + (found.length > 8 ? '<li class="more">' + (found.length - 8) + ' more — keep typing</li>' : '');
+  box.className = 'on';
+}
+
+function pickName(key, li) {
+  el(key + 'Name').value = li.getAttribute('data-v');
+  el(key + 'List').className = '';
+  el('loginErr').className = 'err hidden';
+}
+function closeSugg(key) {
+  setTimeout(function () { el(key + 'List').className = ''; }, 150);   // let the tap land first
+}
+function exact(key) {
+  var typed = String(el(key + 'Name').value || '').trim();
+  for (var i = 0; i < NAMES[key].length; i++) {
+    if (NAMES[key][i].toLowerCase() === typed.toLowerCase()) return NAMES[key][i];
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------- page load */
+window.addEventListener('load', function () {
+  google.script.run
+    .withSuccessHandler(function (o) {
+      OPTIONS = o || {};
+      setNames('stu', OPTIONS.students || []);
+      setNames('sup', OPTIONS.supervisors || []);
+      el('stuName').placeholder = 'Start typing your name (' + NAMES.stu.length + ' on the list)';
+      el('supName').placeholder = 'Start typing your name (' + NAMES.sup.length + ' on the list)';
+    })
+    .withFailureHandler(function (e) { err('Could not load the name lists: ' + fail(e)); })
+    .getLoginOptions();
+
+  var saved = sessionStorage.getItem('emw_token');
+  if (!saved) return;
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (r && r.ok) { enter({ ok: true, token: saved, role: r.role, name: r.name }); }
+      else { sessionStorage.removeItem('emw_token'); }
+    })
+    .withFailureHandler(function () {})
+    .whoAmI(saved);
+});
+
+/* ---------------------------------------------------------------- logins */
+function doStudent() {
+  var n = exact('stu');
+  if (!n) { err('Please pick your name from the suggestions as you type.'); el('stuName').focus(); return; }
+  el('stuName').value = n;
+  var e = el('stuEmail').value;
+  el('stuBtn').disabled = true; el('stuBtn').textContent = 'Signing in…';
+  google.script.run
+    .withSuccessHandler(function (r) { el('stuBtn').disabled = false; el('stuBtn').textContent = 'Sign in'; enter(r); })
+    .withFailureHandler(function (x) { el('stuBtn').disabled = false; el('stuBtn').textContent = 'Sign in'; err(fail(x)); })
+    .loginStudent(n, e);
+}
+
+function doSupervisor() {
+  var n = exact('sup');
+  if (!n) { err('Please pick your name from the suggestions as you type.'); el('supName').focus(); return; }
+  el('supName').value = n;
+  var p = el('supPin').value;
+  el('supBtn').disabled = true; el('supBtn').textContent = 'Signing in…';
+  google.script.run
+    .withSuccessHandler(function (r) { el('supBtn').disabled = false; el('supBtn').textContent = 'Sign in'; enter(r); })
+    .withFailureHandler(function (x) { el('supBtn').disabled = false; el('supBtn').textContent = 'Sign in'; err(fail(x)); })
+    .loginSupervisor(n, p);
+}
+
+function doAdmin() {
+  var p = el('admPass').value;
+  el('admBtn').disabled = true; el('admBtn').textContent = 'Signing in…';
+  google.script.run
+    .withSuccessHandler(function (r) { el('admBtn').disabled = false; el('admBtn').textContent = 'Sign in'; enter(r); })
+    .withFailureHandler(function (x) { el('admBtn').disabled = false; el('admBtn').textContent = 'Sign in'; err(fail(x)); })
+    .loginAdmin(p);
+}
+
+function enter(r) {
+  if (!r || !r.ok) { err('Sign in did not complete.'); return; }
+  TOKEN = r.token;
+  sessionStorage.setItem('emw_token', TOKEN);
+  clearMsgs();
+  el('whoName').textContent = r.name;
+  el('whoRole').textContent = r.role;
+  show_('app');
+  ['Student', 'Supervisor', 'Admin'].forEach(function (x) {
+    el('view' + x).className = (x === r.role) ? '' : 'hidden';
+  });
+  if (r.role === 'Student')    { if (typeof stuEnter === 'function') { stuEnter(); } else { loadStudent(); } }
+  if (r.role === 'Supervisor') { if (typeof supEnter === 'function') { supEnter(); } else { loadSupervisor(); } }
+  if (r.role === 'Admin')      { if (typeof admEnter === 'function') { admEnter(); } else { loadAdmin(); } }
+}
+
+function signOut() {
+  if (TOKEN) { google.script.run.withFailureHandler(function () {}).logoutSession(TOKEN); }
+  TOKEN = null; sessionStorage.removeItem('emw_token');
+  show_('login');
+}
+
+/* --------------------------------------------------------------- badges */
+function badge(status) {
+  var t = String(status || '').toUpperCase() || 'UNKNOWN';
+  var c = 'muted';
+  if (t.indexOf('ACTIVE') > -1) c = 'good';
+  else if (t.indexOf('CAMPUS') > -1) c = 'info';
+  else if (t.indexOf('ROTATION') > -1) c = 'warn';
+  return '<span class="badge ' + c + '">' + esc(t) + '</span>';
+}
+
+/* --------------------------------------------------------------- loading */
+function loadStudent() {
+  google.script.run
+    .withSuccessHandler(function (s) {
+      if (!s) { problem('Your email is not in the trainee list. Please ask the admin.'); return; }
+      el('sName').textContent = s.name || '-';
+      el('sStatus').innerHTML = badge(s.status);
+      el('sNo').textContent = s.no || '-';
+      el('sProgram').textContent = s.program || '-';
+      el('sPosting').textContent = s.posting || 'Not assigned';
+      el('sSupervisor').textContent = s.supervisor || 'Not assigned';
+    })
+    .withFailureHandler(function (e) { problem('Could not load your record: ' + fail(e)); })
+    .getMyStudentData(TOKEN);
+}
+
+function loadSupervisor() {
+  google.script.run
+    .withSuccessHandler(function (rows) {
+      rows = rows || [];
+      el('supCount').textContent = rows.length + ' student' + (rows.length === 1 ? '' : 's') + ' assigned to you.';
+      el('supBody').innerHTML = rows.map(function (s) {
+        return '<tr><td class="mono">' + esc(s.no || '-') + '</td><td><b>' + esc(s.name || '-') + '</b></td><td>' +
+               esc(s.program || '-') + '</td><td>' + badge(s.status) + '</td><td>' + esc(s.posting || '-') + '</td></tr>';
+      }).join('');
+      el('supEmpty').textContent = rows.length ? '' : 'No trainees are currently listed under your name.';
+    })
+    .withFailureHandler(function (e) { problem('Could not load your students: ' + fail(e)); })
+    .getMyAssignedStudents(TOKEN);
+}
+
+/* Enter submits from any field of the visible form */
+function enterKey_(ev, role) {
+  if (ev.key !== 'Enter') return;
+  ev.preventDefault();
+  if (role === 'Student')    { doStudent(); }
+  if (role === 'Supervisor') { doSupervisor(); }
+  if (role === 'Admin')      { doAdmin(); }
+}
+
+function syncMmc() {
+  var b = el('mmcBtn');
+  b.disabled = true; b.textContent = 'Copying…';
+  el('mmcMsg').textContent = '';
+  google.script.run
+    .withSuccessHandler(function (r) {
+      b.disabled = false; b.textContent = 'Copy NSR numbers from the Staff Registry';
+      if (!r || r.error) { el('mmcMsg').textContent = 'Failed: ' + ((r && r.error) || 'no result'); return; }
+      var lines = ['Copied to the "' + (r.copyTab || 'Staff NSR') + '" tab in this spreadsheet (' +
+                   (r.copyRows || 0) + ' supervisors), and ' + r.updated + ' row(s) updated in Users.'];
+      if (r.matched && r.matched.length) {
+        lines.push('', 'Matched in the staff registry:');
+        r.matched.forEach(function (m) { lines.push('  ' + m); });
+      }
+      if (r.ambiguous && r.ambiguous.length) {
+        lines.push('', 'Ambiguous — nothing written, tell the admin to check:');
+        r.ambiguous.forEach(function (m) { lines.push('  ' + m); });
+      }
+      if (r.unmatched && r.unmatched.length) {
+        lines.push('', 'Not found in the registry, so left as-is:');
+        r.unmatched.forEach(function (m) { lines.push('  ' + m); });
+      }
+      lines.push('', 'Looked for these columns, in order: ' + r.sourceHeaders.join(', ') +
+                 ' (registry tabs searched: ' + r.staffTabs.join(', ') + ')');
+      el('mmcMsg').textContent = lines.join('\n');
+    })
+    .withFailureHandler(function (e) {
+      b.disabled = false; b.textContent = 'Copy NSR numbers from the Staff Registry';
+      el('mmcMsg').textContent = 'Failed: ' + fail(e);
+    })
+    .syncSupervisorMmcFromRegistry(TOKEN);
+}
+
+function applyMmc() {
+  var b = el('applyBtn');
+  b.disabled = true; b.textContent = 'Applying…';
+  google.script.run
+    .withSuccessHandler(function (r) {
+      b.disabled = false; b.textContent = 'Apply the copied numbers to logins';
+      if (!r || r.error) { el('mmcMsg').textContent = 'Failed: ' + ((r && r.error) || 'no result'); return; }
+      var lines = ['Updated ' + r.applied + ' login(s) from the "' + (r.copyTab || 'Staff NSR') + '" tab.'];
+      if (r.rows && r.rows.length) { lines.push(''); r.rows.forEach(function (x) { lines.push('  ' + x); }); }
+      if (r.skipped && r.skipped.length) {
+        lines.push('', 'Skipped (no matching row in Users):');
+        r.skipped.forEach(function (x) { lines.push('  ' + x); });
+      }
+      if (!r.applied) { lines.push('', 'Nothing needed changing.'); }
+      el('mmcMsg').textContent = lines.join('\n');
+    })
+    .withFailureHandler(function (e) {
+      b.disabled = false; b.textContent = 'Apply the copied numbers to logins';
+      el('mmcMsg').textContent = 'Failed: ' + fail(e);
+    })
+    .applyCopiedMmcToLogins(TOKEN);
+}
+
+function refreshPins() {
+  var b = el('pinBtn');
+  b.disabled = true; b.textContent = 'Working…';
+  google.script.run
+    .withSuccessHandler(function (r) {
+      b.disabled = false; b.textContent = 'Refresh the supervisor / NSR list';
+      el('pinMsg').textContent = (r && r.tab)
+        ? 'Done — ' + r.supervisors + ' people in the "' + r.tab + '" tab' +
+          (r.adminCreated ? ', and an admin passcode was created' : '') + '.'
+        : 'Done.';
+    })
+    .withFailureHandler(function (e) {
+      b.disabled = false; b.textContent = 'Refresh the supervisor / NSR list';
+      el('pinMsg').textContent = 'Could not refresh: ' + fail(e);
+    })
+    .refreshReferenceTab(TOKEN);
+}
+
+function loadAdmin() {
+  google.script.run
+    .withSuccessHandler(function (rows) {
+      rows = rows || [];
+      if (!rows.length) { problem('No trainees were read from the sheet.'); }
+      el('admBody').innerHTML = rows.map(function (s) {
+        return '<tr><td class="mono">' + esc(s.no || '-') + '</td><td><b>' + esc(s.name || '-') + '</b></td><td>' +
+               esc(s.email || '-') + '</td><td>' + esc(s.program || '-') + '</td><td>' + badge(s.status) +
+               '</td><td>' + esc(s.posting || '-') + '</td><td>' + esc(s.supervisor || '-') + '</td></tr>';
+      }).join('');
+      el('admCount').textContent = rows.length + ' trainee' + (rows.length === 1 ? '' : 's') + ' in the list.';
+    })
+    .withFailureHandler(function (e) { problem('Could not load the list: ' + fail(e)); })
+    .getAllStudents(TOKEN);
+
+  // keep the supervisor reference tab current (the server rate-limits this)
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (r && r.tab) {
+        el('pinMsg').textContent = 'Supervisor / NSR list refreshed in the "' + r.tab + '" tab (' +
+          r.supervisors + ' rows' + (r.generated ? ', ' + r.generated + ' NSR number(s) issued' : '') + ').';
+      }
+    })
+    .withFailureHandler(function () {})
+    .refreshReferenceTab(TOKEN);
+
+  google.script.run
+    .withSuccessHandler(function (d) {
+      if (!d) return;
+      el('admDiag').textContent = 'sheet ' + (d.spreadsheetName || '?') + ' · trainee tab ' +
+        (d.masterTabUsed || 'NOT FOUND') + ' · trainees ' + d.traineeCount +
+        ' · roles tab ' + (d.usersTabUsed || 'NOT FOUND') + ' (' + d.usersRows + ' rows)';
+    })
+    .withFailureHandler(function () {})
+    .getDiagnostics(TOKEN);
+}
+
+/* Shows which Google account the deployment can see (D1). Blank means the deployment
+   still allows anyone in without signing in. */
+google.script.run
+  .withSuccessHandler(function (r) {
+    var box = document.getElementById('gmailLine');
+    if (!box) return;
+    box.textContent = (r && r.email)
+      ? 'Signed in to Google as ' + r.email
+      : 'No Google sign-in detected - the deployment still allows anyone to open this page.';
+  })
+  .withFailureHandler(function () {})
+  .getSignedInEmail();
+</script>
+</body>
+</html>
