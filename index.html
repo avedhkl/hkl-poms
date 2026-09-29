@@ -2365,10 +2365,17 @@ function isoPlus_(iso, days) {
 }
 
 /** Add or change one posting. cell = { postingId, tempat, from, to, roundNo, status } or null for a new one. */
+function dayOf_(v) {                       // anything -> yyyy-MM-dd, for a date field
+  var s = String(v === undefined || v === null ? '' : v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  var d = new Date(s);
+  if (isNaN(d.getTime())) return '';
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
 function postingModal_(sid, name, cell) {
   var has = !!(cell && cell.postingId);
-  var from = (cell && cell.from) || isoToday_();
-  var to = (cell && cell.to) || isoPlus_(from, 182);
+  var from = dayOf_((cell && cell.from) || '') || isoToday_();
+  var to = dayOf_((cell && cell.to) || '') || isoPlus_(from, 182);
   modal((has ? 'Change' : 'Add') + ' a posting' + (name ? ' for ' + name : ''),
     '<label for="ppDept">Department / place</label><input id="ppDept" type="text" value="' + esc(cell ? cell.tempat : '') + '">' +
     '<label for="ppFrom">Start</label><input id="ppFrom" type="date" value="' + esc(from) + '">' +
@@ -2411,7 +2418,8 @@ function admEditPosting(key) {
   ((ADM.data.file || {}).postings || []).forEach(function (r) { if (String(r['id']) === String(pid)) row = r; });
   if (!row) { toast('That posting has gone. Reopen the page.', 'bad'); return; }
   postingModal_(sid, ((ADM.data.file || {}).student || {}).name || '',
-    { postingId: row['id'], tempat: row['tempat'], from: row['startDate'] || '', to: row['endDate'] || '',
+    { postingId: row['id'], tempat: row['tempat'],
+      from: row['startDay'] || dayOf_(row['startDate']), to: row['endDay'] || dayOf_(row['endDate']),
       roundNo: row['roundNo'] || 1, status: row['status'] || '' });
 }
 function admDelPosting(key) {
