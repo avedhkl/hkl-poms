@@ -2264,7 +2264,7 @@ function admRenderFile() {
         var ok = /complet|verif|done/i.test(st), gone = /cancel|withdraw/i.test(st);
         return '<div class="tl-item' + (ok ? ' ok' : '') + '">' +
           '<div class="tl-h">' + esc(p['tempat'] || '?') + (p['roundNo'] ? ' \u00b7 round ' + esc(p['roundNo']) : '') + '</div>' +
-          '<div class="tl-m">' + esc(p['startDate'] || p['tempoh'] || '\u2014') + ' \u2192 ' + esc(p['endDate'] || '') +
+          '<div class="tl-m">' + esc(dayText_(p['startDay'] || p['startDate'])) + ' \u2192 ' + esc(dayText_(p['endDay'] || p['endDate'])) +
             ' \u00b7 <span class="badge ' + (ok ? 'good' : (gone ? 'high' : 'info')) + '">' + esc(st) + '</span></div>' +
           '<div class="row-actions"><button class="btn small secondary" data-aact="editPosting" data-aid="' +
             esc(s.studentId + '|' + (p['id'] || '')) + '">Change the dates or place</button>' +
@@ -2365,6 +2365,12 @@ function isoPlus_(iso, days) {
 }
 
 /** Add or change one posting. cell = { postingId, tempat, from, to, roundNo, status } or null for a new one. */
+function dayText_(v) {                  // 2024-12-01 -> 01.12.2024, the department's house style
+  var d = dayOf_(v);
+  if (!d) return '\u2014';
+  var p = d.split('-');
+  return p[2] + '.' + p[1] + '.' + p[0];
+}
 function dayOf_(v) {                       // anything -> yyyy-MM-dd, for a date field
   var s = String(v === undefined || v === null ? '' : v).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
