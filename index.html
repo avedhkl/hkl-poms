@@ -62,13 +62,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <!-- Styles.html - the ETD HKL design tokens and shared components. Do not restyle:
-     dark slate #0A1A2B + amber #2EC4B6, Zilla Slab / IBM Plex Sans / IBM Plex Mono. -->
+     cool gray-white + ink blue + silky sage, Zilla Slab / IBM Plex Sans / IBM Plex Mono. -->
 <style>
     /* same palette and components as the rest of the ETD HKL tools - do not restyle */
-    :root{--ink:#0A1A2B;--panel:#102A41;--panel-2:#153049;--panel-3:#1B3B58;--line:#24476A;
-          --line-soft:#1B3A55;--paper:#EAF0F6;--paper-dim:#C2CFDC;--muted:#8FA7BD;
-          --accent:#2EC4B6;--accent-ink:#06231F;--good:#4CC08E;--good-dim:#0E2C25;--warn:#E4B45C;--warn-dim:#322A14;
-          --info:#6FA8DC;--info-dim:#14293C;--danger:#E0685C;--danger-dim:#331F1C;--radius:5px;}
+    :root{--ink:#F8FAFC;--panel:#FFFFFF;--panel-2:#F1F5F9;--panel-3:#E8EEF4;--line:#D5DEE7;
+          --line-soft:#E3E9EF;--paper:#0F172A;--paper-dim:#334155;--muted:#64748B;
+          --accent:#2F6A60;--accent-ink:#FFFFFF;--good:#15803D;--good-dim:#DCFCE7;
+          --warn:#B45309;--warn-dim:#FEF3C7;--info:#1D4ED8;--info-dim:#DBEAFE;
+          --danger:#B91C1C;--danger-dim:#FEE2E2;--radius:5px;}
     *{box-sizing:border-box;} html,body{margin:0;padding:0;}
     body{background:var(--ink);color:var(--paper);font-family:'IBM Plex Sans',sans-serif;
          font-size:14.5px;line-height:1.5;-webkit-font-smoothing:antialiased;}
@@ -86,12 +87,12 @@
     .photo-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap;}
     #stuBusy{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;
       display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);
-      border-radius:999px;padding:9px 16px;font-size:12.5px;color:var(--paper);box-shadow:0 6px 22px rgba(0,0,0,.35);}
+      border-radius:999px;padding:9px 16px;font-size:12.5px;color:var(--paper);box-shadow:0 6px 22px rgba(15,23,42,.12);}
     .spin{width:15px;height:15px;border-radius:50%;border:2px solid var(--panel-3);
       border-top-color:var(--accent);animation:sp .7s linear infinite;flex:0 0 auto;}
     @keyframes sp{to{transform:rotate(360deg);}}
     #stuBar{position:fixed;top:0;left:0;height:3px;width:0;z-index:61;background:var(--accent);
-      transition:width .25s ease;box-shadow:0 0 10px rgba(232,163,61,.7);}
+      transition:width .25s ease;box-shadow:0 1px 6px rgba(47,106,96,.35);}
     #stuBar.on{animation:sweep 1.6s ease-in-out infinite;}
     @keyframes sweep{0%{width:8%;margin-left:0}50%{width:55%;margin-left:20%}100%{width:8%;margin-left:92%}}
     .skel{background:linear-gradient(90deg,var(--panel-2),var(--panel-3),var(--panel-2));background-size:200% 100%;
@@ -102,6 +103,7 @@
     .header h1{font-size:26px;font-weight:600;margin:6px 0 4px;}
     .header .sub{color:var(--muted);font-size:13px;}
     .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+      box-shadow:0 1px 2px rgba(15,23,42,.04),0 1px 3px rgba(15,23,42,.06);
            padding:20px 22px;margin-bottom:18px;width:100%;}
      /* one wrapper per field, so a wide screen can lay them out side by side */
      .field{min-width:0;}
@@ -126,14 +128,14 @@
     .tab-btn{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--paper-dim);
              padding:10px;border-radius:var(--radius);cursor:pointer;font-size:13.5px;
              font-weight:600;text-align:center;font-family:inherit;}
-    .tab-btn.on{background:var(--accent);color:#06231F;border-color:var(--accent);}
+    .tab-btn.on{background:var(--accent);color:#FFFFFF;border-color:var(--accent);}
     label{display:block;font-size:11.5px;color:var(--muted);text-transform:uppercase;
           letter-spacing:.04em;margin:12px 0 5px;}
     label:first-child{margin-top:0;}
     input,select{width:100%;background:var(--panel-3);border:1px solid var(--line);color:var(--paper);
                  padding:9px 11px;border-radius:4px;font-family:'IBM Plex Sans',sans-serif;font-size:14px;}
     input:focus,select:focus{outline:none;border-color:var(--accent);}
-    .btn{display:inline-block;background:var(--accent);color:#06231F;border:none;padding:10px 18px;
+    .btn{display:inline-block;background:var(--accent);color:#FFFFFF;border:none;padding:10px 18px;
          border-radius:4px;font-weight:600;font-size:13.5px;cursor:pointer;margin-top:14px;
          font-family:inherit;}
     .btn:hover{filter:brightness(1.08);}
@@ -166,7 +168,7 @@
     .sugg{position:relative;}
     .sugg ul{position:absolute;z-index:20;left:0;right:0;top:100%;margin:2px 0 0;padding:0;
              list-style:none;background:var(--panel-2);border:1px solid var(--line);
-             border-radius:4px;box-shadow:0 10px 24px rgba(0,0,0,.45);max-height:250px;
+             border-radius:4px;box-shadow:0 10px 24px rgba(15,23,42,.14);max-height:250px;
              overflow-y:auto;display:none;}
     .sugg ul.on{display:block;}
     .sugg li{padding:10px 12px;font-size:14px;cursor:pointer;border-bottom:1px solid var(--line-soft);}
@@ -187,12 +189,12 @@
   <svg viewBox="0 0 600 40" preserveAspectRatio="none">
     <defs>
       <linearGradient id="phGrad" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="#6FA8DC"/>
-        <stop offset="55%" stop-color="#2EC4B6"/>
-        <stop offset="100%" stop-color="#E0685C"/>
+        <stop offset="0%" stop-color="#1D4ED8"/>
+        <stop offset="55%" stop-color="#2F6A60"/>
+        <stop offset="100%" stop-color="#B91C1C"/>
       </linearGradient>
     </defs>
-    <path class="ph-track" d="M0 22 H600" fill="none" stroke="#24476A" stroke-width="1"/>
+    <path class="ph-track" d="M0 22 H600" fill="none" stroke="#D5DEE7" stroke-width="1"/>
     <path class="ph-line"
           d="M0 22 H110 l10 -10 l9 20 l10 -20 l9 20 l10 -10 H290 l10 -10 l9 20 l10 -20 l9 20 l10 -10 H600"
           fill="none" stroke="url(#phGrad)" stroke-width="2" stroke-linejoin="round"/>
@@ -301,7 +303,7 @@
   .spa-nav button{background:var(--panel-2);border:1px solid var(--line);color:var(--paper-dim);
     padding:8px 13px;border-radius:999px;cursor:pointer;font-size:12.5px;font-weight:600;
     font-family:inherit;white-space:nowrap;}
-  .spa-nav button.on{background:var(--accent);color:#06231F;border-color:var(--accent);}
+  .spa-nav button.on{background:var(--accent);color:#FFFFFF;border-color:var(--accent);}
   .spa-nav button .n{background:var(--danger);color:#fff;border-radius:999px;font-size:10px;
     padding:1px 6px;margin-left:6px;}
   @media (max-width:640px){
@@ -356,7 +358,7 @@
   .toasts{position:fixed;right:16px;bottom:16px;z-index:80;display:flex;flex-direction:column;gap:8px;}
   @media (max-width:640px){.toasts{left:12px;right:12px;bottom:78px;}}
   .toast{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--accent);
-    border-radius:4px;padding:10px 13px;font-size:13px;box-shadow:0 8px 22px rgba(0,0,0,.4);}
+    border-radius:4px;padding:10px 13px;font-size:13px;box-shadow:0 8px 22px rgba(15,23,42,.12);}
   .toast.bad{border-left-color:var(--danger);}
   .toast.good{border-left-color:var(--good);}
   .skel{background:linear-gradient(90deg,var(--panel-2),var(--panel-3),var(--panel-2));
@@ -441,14 +443,14 @@ function stuCloseModal() {
 function ring(pct, label, sub) {
   var p = Math.max(0, Math.min(100, Math.round(pct || 0)));
   var r = 22, c = 2 * Math.PI * r, off = c - (p / 100) * c;
-  var stroke = p >= 80 ? '#4CC08E' : (p >= 40 ? '#E4B45C' : '#E0685C');
+  var stroke = p >= 80 ? '#15803D' : (p >= 40 ? '#B45309' : '#B91C1C');
   return '<div class="ring"><svg width="58" height="58" viewBox="0 0 58 58" role="img" aria-label="' +
     p + ' percent">' +
-    '<circle cx="29" cy="29" r="' + r + '" fill="none" stroke="#1B3B58" stroke-width="6"></circle>' +
+    '<circle cx="29" cy="29" r="' + r + '" fill="none" stroke="#E8EEF4" stroke-width="6"></circle>' +
     '<circle cx="29" cy="29" r="' + r + '" fill="none" stroke="' + stroke + '" stroke-width="6" ' +
     'stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) +
     '" transform="rotate(-90 29 29)"></circle>' +
-    '<text x="29" y="33" text-anchor="middle" fill="#EAF0F6" font-size="14" font-family="IBM Plex Mono, monospace">' +
+    '<text x="29" y="33" text-anchor="middle" fill="#0F172A" font-size="14" font-family="IBM Plex Mono, monospace">' +
     p + '%</text></svg><div class="lab">' + esc(label) + '</div><div class="sub">' + esc(sub || '') + '</div></div>';
 }
 
@@ -1230,7 +1232,7 @@ function stuReadNotif(id) {
   .toolbar select{max-width:200px;}
   .chip{border:1px solid var(--line);background:var(--panel-2);color:var(--paper-dim);border-radius:999px;
     padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;}
-  .chip.on{background:var(--accent);color:#06231F;border-color:var(--accent);font-weight:600;}
+  .chip.on{background:var(--accent);color:#FFFFFF;border-color:var(--accent);font-weight:600;}
   .note-private{border-left:3px solid var(--info);}
 </style>
 
@@ -1931,9 +1933,16 @@ document.addEventListener('click', function (ev) {
     savePhoto: admSavePhotoAct,
     backup: admBackup, reminders: admReminders, trigger: admTrigger,
     reportCohort: admReportCohort, reportStudent: admReportStudent, filterClear: admFilterClear,
-    editPlanner: admPlannerEdit
+    editPlanner: admPlannerEdit, addPosting: admAddPosting, editPosting: admEditPosting,
+    delPosting: admDelPosting
   };
   if (acts[a.getAttribute('data-aact')]) acts[a.getAttribute('data-aact')](id, a);
+});
+
+document.addEventListener('change', function (ev) {
+  var a = ev.target.closest ? ev.target.closest('select[data-aact]') : null;
+  if (!a) return;
+  if (a.getAttribute('data-aact') === 'plannerRange') admPlannerRange(a.value);
 });
 
 /* --------------------------------------------------------- A1 dashboard */
@@ -2225,6 +2234,7 @@ function admRenderFile() {
       return;
     }
     var s = d.student, r = d.rings;
+    ADM.data.file = d;
     admRun('adminStudentPhoto', [TOKEN, s.studentId], function (ph) {
       var el = document.getElementById('admStuPhoto');
       if (el && ph && ph.dataUrl) el.innerHTML = '<img alt="" src="' + ph.dataUrl + '">';
@@ -2244,6 +2254,23 @@ function admRenderFile() {
       return '<div class="tl-item"><div class="tl-h">' + esc(l['type']) + ' ' + esc(l['startDate']) + ' → ' +
         esc(l['endDate']) + '</div><div class="tl-m">' + esc(l['workingDays'] || l['days']) + ' day(s) · ' + esc(l['status']) + '</div></div>';
     }).join('') || '<div class="note">No leave.</div>';
+    var posts = (d.postings || []).slice().sort(function (x, y) {
+      return String(x['startDate'] || '').localeCompare(String(y['startDate'] || '')); });
+    var postsBlock = '<div class="row-actions" style="margin:0 0 10px">' +
+        '<button class="btn small" data-aact="addPosting" data-aid="' + esc(s.studentId) + '">Add a posting</button>' +
+        '<span class="note" style="align-self:center">' + posts.length + ' on record, oldest first.</span></div>' +
+      (posts.map(function (p) {
+        var st = String(p['status'] || 'Active');
+        var ok = /complet|verif|done/i.test(st), gone = /cancel|withdraw/i.test(st);
+        return '<div class="tl-item' + (ok ? ' ok' : '') + '">' +
+          '<div class="tl-h">' + esc(p['tempat'] || '?') + (p['roundNo'] ? ' \u00b7 round ' + esc(p['roundNo']) : '') + '</div>' +
+          '<div class="tl-m">' + esc(p['startDate'] || p['tempoh'] || '\u2014') + ' \u2192 ' + esc(p['endDate'] || '') +
+            ' \u00b7 <span class="badge ' + (ok ? 'good' : (gone ? 'high' : 'info')) + '">' + esc(st) + '</span></div>' +
+          '<div class="row-actions"><button class="btn small secondary" data-aact="editPosting" data-aid="' +
+            esc(s.studentId + '|' + (p['id'] || '')) + '">Change the dates or place</button>' +
+          '<button class="btn small secondary" data-aact="delPosting" data-aid="' +
+            esc(s.studentId + '|' + (p['id'] || '')) + '">Delete</button></div></div>';
+      }).join('') || '<div class="note">No postings on record yet. Use Add a posting above.</div>');
     var chk = (d.checklist || []).map(function (c) {
       return '<div class="att ' + (c.met ? 'info' : 'warn') + '"><div>' + esc(c.name) +
         '<div class="note">' + esc(c.detail) + '</div></div></div>';
@@ -2270,13 +2297,15 @@ function admRenderFile() {
           '"><div>' + esc(x.text) + '</div></div>'; }).join('')) +
       '<div class="grid2">' + card_('Milestones', '<div class="tl">' + ms + '</div>') +
         card_('Leave', '<div class="tl">' + lv + '</div>') + '</div>' +
+      card_('Postings (rotation rounds)', postsBlock) +
       card_('Pass checklist', chk);
   });
 }
 
 /* ---------------------------------------------------- A3 rotation planner */
 function admRenderPlanner() {
-  admRun('adminPlanner', [TOKEN, 8], function (d) {
+  var ahead = ADM.plannerAhead || 8, back = ADM.plannerBack || 0;
+  admRun('adminPlanner', [TOKEN, ahead, back], function (d) {
     if (!d || d.error || !d.students) {
       document.getElementById('av-' + ADM.route).innerHTML = card_('Rotation planner', esc(reason_(d)));
       return;
@@ -2284,7 +2313,8 @@ function admRenderPlanner() {
     ADM.data.planner = d;
     var head = '<tr><th>Student</th>' + d.months.map(function (m) { return '<th>' + esc(m) + '</th>'; }).join('') + '</tr>';
     var body = d.students.map(function (s) {
-      return '<tr><td><b>' + esc(s.name) + '</b><div class="note" style="margin:2px 0 0">' +
+      return '<tr><td><b><span class="linkish" data-aact="openFile" data-aid="' + esc(s.studentId) +
+        '">' + esc(s.name) + '</span></b><div class="note" style="margin:2px 0 0">' +
         esc(s.supervisor || '') + '</div></td>' +
         d.months.map(function (m) {
           var c = s.cells[m];
@@ -2306,36 +2336,99 @@ function admRenderPlanner() {
         keys.reduce(function (t, k) { return t + per[k]; }, 0) + '</span></div>';
     }).join('');
     document.getElementById('av-planner').innerHTML =
-      card_('Rotation planner', '<div class="note">Click a cell to add or change that student\u2019s posting for the month.</div>' +
+      card_('Rotation planner', '<div class="row-actions" style="margin:0 0 10px">' +
+          '<label for="plRange" style="align-self:center">Show</label>' +
+          '<select id="plRange" data-aact="plannerRange" style="max-width:280px">' +
+            ['0|8|Next 8 months', '6|8|Last 6 months + next 8', '18|12|Last 18 months + next 12',
+             '36|12|Last 3 years + next 12'].map(function (o) {
+              var q = o.split('|');
+              return '<option value="' + q[0] + '|' + q[1] + '"' +
+                (Number(q[0]) === back && Number(q[1]) === ahead ? ' selected' : '') + '>' + esc(q[2]) + '</option>';
+            }).join('') +
+          '</select>' +
+          '<span class="note" style="align-self:center">Click any cell to add, change or delete that posting. ' +
+          'Click a name to open the student and see every posting they have.</span></div>' +
         '<div class="tbl-wrap"><table class="tbl">' + head + body + '</table></div>') +
       card_('Capacity warnings', warn) +
       card_('Students posted per month', '<div class="bars">' + load + '</div>');
   });
 }
+function isoToday_() {
+  var d = new Date();
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+function isoPlus_(iso, days) {
+  var p = String(iso).split('-');
+  var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  d.setDate(d.getDate() + Number(days || 0));
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+
+/** Add or change one posting. cell = { postingId, tempat, from, to, roundNo, status } or null for a new one. */
+function postingModal_(sid, name, cell) {
+  var has = !!(cell && cell.postingId);
+  var from = (cell && cell.from) || isoToday_();
+  var to = (cell && cell.to) || isoPlus_(from, 182);
+  modal((has ? 'Change' : 'Add') + ' a posting' + (name ? ' for ' + name : ''),
+    '<label for="ppDept">Department / place</label><input id="ppDept" type="text" value="' + esc(cell ? cell.tempat : '') + '">' +
+    '<label for="ppFrom">Start</label><input id="ppFrom" type="date" value="' + esc(from) + '">' +
+    '<label for="ppTo">End</label><input id="ppTo" type="date" value="' + esc(to) + '">' +
+    '<label for="ppRound">Round number</label><input id="ppRound" type="number" min="0" value="' + esc(cell && cell.roundNo ? cell.roundNo : 1) + '">' +
+    '<div class="note">' + (has ? 'Saving updates this posting. Status: ' + esc(cell.status || 'Active') + '.'
+                                 : 'A new posting is recorded as Active.') + '</div>',
+    [{ label: has ? 'Save' : 'Add', onClick: function () {
+        admRun('adminSavePosting', [TOKEN, { id: has ? cell.postingId : '', studentId: sid,
+          tempat: document.getElementById('ppDept').value, startDate: document.getElementById('ppFrom').value,
+          endDate: document.getElementById('ppTo').value, roundNo: document.getElementById('ppRound').value,
+          status: has ? (cell.status || 'Active') : 'Active' }], function (r) {
+          if (r && r.error) { toast(r.error, 'bad'); return; }
+          stuCloseModal(); toast(has ? 'Posting updated.' : 'Posting added.', 'good');
+          if (ADM.route === 'file') admRenderFile(); else admRenderPlanner();
+        });
+      } }, { label: 'Cancel', secondary: true }].concat(has ? [{ label: 'Delete', secondary: true, onClick: function () {
+        admDelPosting(sid + '|' + cell.postingId);
+      } }] : []));
+}
+
+/** Clicking a cell in the rotation grid. */
 function admPlannerEdit(key) {
   var parts = String(key).split('|');
   var sid = parts[0], month = parts[1];
   var d = ADM.data.planner, student = null;
   (d.students || []).forEach(function (s) { if (s.studentId === sid) student = s; });
   var cell = student ? student.cells[month] : null;
-  modal('Posting for ' + (student ? student.name : '') + ' in ' + month,
-    '<label for="ppDept">Department</label><input id="ppDept" type="text" value="' + esc(cell ? cell.tempat : '') + '">' +
-    '<label for="ppFrom">Start</label><input id="ppFrom" type="date" value="' + esc(cell ? cell.from : month + '-01') + '">' +
-    '<label for="ppTo">End</label><input id="ppTo" type="date" value="' + esc(cell ? cell.to : month + '-28') + '">' +
-    '<label for="ppRound">Round number</label><input id="ppRound" type="number" value="' + esc(cell ? cell.roundNo : 1) + '">' +
-    (cell ? '<div class="note">Saving updates the existing posting.</div>' : ''),
-    [{ label: cell ? 'Save' : 'Add', onClick: function () {
-        admRun('adminSavePosting', [TOKEN, { id: cell ? cell.postingId : '', studentId: sid,
-          tempat: document.getElementById('ppDept').value, startDate: document.getElementById('ppFrom').value,
-          endDate: document.getElementById('ppTo').value, roundNo: document.getElementById('ppRound').value,
-          status: 'Active' }], function (r) {
+  postingModal_(sid, student ? student.name : '', cell
+    ? { postingId: cell.postingId, tempat: cell.tempat, from: cell.from, to: cell.to, roundNo: cell.roundNo, status: cell.status }
+    : { postingId: '', tempat: '', from: month + '-01', to: month + '-28', roundNo: 1, status: '' });
+}
+function admAddPosting(sid) {
+  var f = ADM.data.file || {};
+  postingModal_(sid, (f.student || {}).name || '', null);
+}
+function admEditPosting(key) {
+  var parts = String(key).split('|'), sid = parts[0], pid = parts[1], row = null;
+  ((ADM.data.file || {}).postings || []).forEach(function (r) { if (String(r['id']) === String(pid)) row = r; });
+  if (!row) { toast('That posting has gone. Reopen the page.', 'bad'); return; }
+  postingModal_(sid, ((ADM.data.file || {}).student || {}).name || '',
+    { postingId: row['id'], tempat: row['tempat'], from: row['startDate'] || '', to: row['endDate'] || '',
+      roundNo: row['roundNo'] || 1, status: row['status'] || '' });
+}
+function admDelPosting(key) {
+  var parts = String(key).split('|'), pid = parts[1];
+  modal('Delete this posting?', '<div class="note">It disappears from the rotation record. The audit log keeps a note of who did it.</div>',
+    [{ label: 'Delete', onClick: function () {
+        admRun('adminDeletePosting', [TOKEN, pid], function (r) {
           if (r && r.error) { toast(r.error, 'bad'); return; }
-          stuCloseModal(); toast('Saved.', 'good'); admRenderPlanner();
+          stuCloseModal(); toast('Posting deleted.', 'good');
+          if (ADM.route === 'file') admRenderFile(); else admRenderPlanner();
         });
-      } }, { label: 'Cancel', secondary: true }].concat(cell ? [{ label: 'Delete', secondary: true, onClick: function () {
-        admRun('adminDeletePosting', [TOKEN, cell.postingId], function () {
-          stuCloseModal(); toast('Posting removed.', 'good'); admRenderPlanner(); });
-      } }] : []));
+      } }, { label: 'Keep it', secondary: true }]);
+}
+function admPlannerRange(val) {
+  var bits = String(val).split('|');
+  ADM.plannerBack = Number(bits[0] || 0);
+  ADM.plannerAhead = Number(bits[1] || 8);
+  admRenderPlanner();
 }
 
 /* ------------------------------------------------------------- A4 leave */
