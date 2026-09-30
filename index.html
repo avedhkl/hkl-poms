@@ -2461,12 +2461,18 @@ function admRenderFile() {
       var el = document.getElementById('admStuPhoto');
       if (el && ph && ph.dataUrl) el.innerHTML = '<img alt="" src="' + ph.dataUrl + '">';
     });
-    var facts = [['Name', s.name], ['IC', s.ic], ['MMC', s.mmc], ['Phone', s.phone], ['Email', s.email],
-                 ['Address', s.alamat], ['Programme', s.program], ['Year', s.tahunSt],
-                 ['University', s.universiti], ['Status', s.status], ['Posting', s.jab],
-                 ['Supervisor', s.supervisor], ['Reporting', s.tarikhLaporDiri],
-                 ['Ends', s.tarikhTamatJabatan], ['Admin notes', s.adminNotes]]
-      .map(function (p) { return '<div><div class="k">' + esc(p[0]) + '</div><div class="v">' + esc(p[1] || '—') + '</div></div>'; }).join('');
+    // click any of these to change it; the server checks the column is one it may write
+    var facts = [['Name', 'NAMA', s.name], ['IC', 'NO K/P', s.ic], ['MMC', 'MMC', s.mmc],
+                 ['Phone', 'NO. TEL', s.phone], ['Email', 'EMAIL', s.email],
+                 ['Address', 'ALAMAT', s.alamat], ['Programme', 'PROGRAM', s.program],
+                 ['Year', 'TAHUN /ST', s.tahunSt], ['University', 'UNIVERSITI', s.universiti],
+                 ['Status', 'STATUS', s.status], ['Posting', 'JAB', s.jab],
+                 ['Supervisor', 'SUPERVISOR', s.supervisor], ['Reporting date', 'TARIKH LAPOR DIRI', s.tarikhLaporDiri],
+                 ['Ends', 'TAMAT DI JABATAN', s.tarikhTamatJabatan], ['Admin notes', 'adminNotes', s.adminNotes]]
+      .map(function (p) {
+        return '<div><div class="k">' + esc(p[0]) + '</div><div class="v"><span class="inline-edit" data-aact="editField" data-aid="' +
+          esc(s.studentId + '|' + p[1]) + '" title="Click to change this">' + esc(p[2] || '— not set —') + '</span></div></div>';
+      }).join('');
     var ms = (d.milestones || []).map(function (m) {
       var mid = esc(s.studentId + '|' + (m['id'] || ''));
       var verified = String(m['status']) === 'Verified';
@@ -2514,7 +2520,8 @@ function admRenderFile() {
         '<input type="file" id="admPhotoFile" accept="image/*"><div class="row-actions">' +
         '<button class="btn small secondary" data-aact="savePhoto" data-aid="' + esc(s.studentId) + '">Save this picture</button>' +
         '</div></div></div>' +
-        '<div class="k-v" style="margin-top:12px">' + facts + '</div>' +
+        '<div class="note" style="margin-top:10px">Click any value below to change it \u2014 including the email a student signs in with.</div>' +
+        '<div class="k-v" style="margin-top:8px">' + facts + '</div>' +
         '<div class="row-actions"><button class="btn small" data-aact="changeSup" data-aid="' + esc(s.studentId) +
         '">Change supervisor</button>' +
         '<button class="btn small secondary" data-aact="reportStudent" data-aid="' +
